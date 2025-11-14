@@ -10,6 +10,14 @@
 !.yarn/releases
 !.yarn/versions
 
+DEV_PLAN.md
+GOOGLE_OAUTH_SETUP.md
+NEXT_STEPS.md
+PROJECT_SUMMARY.md
+SETUP.md
+SUPABASE_CREDENTIALS.txt
+
+
 # testing
 /coverage
 

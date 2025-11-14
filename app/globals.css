@@ -1,26 +1,69 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fffbf5;
+  --foreground: #2d2d2d;
+  --card-background: #ffffff;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-coral-50: #ffebee;
+  --color-coral-100: #ffcdd2;
+  --color-coral-200: #ef9a9a;
+  --color-coral-300: #e57373;
+  --color-coral-400: #ff8a80;
+  --color-coral-500: #e16d6d;
+  --color-coral-600: #d95f5f;
+  
+  --color-teal-50: #e0f2f1;
+  --color-teal-100: #b2dfdb;
+  --color-teal-200: #80cbc4;
+  --color-teal-300: #4db6ac;
+  --color-teal-400: #26a69a;
+  --color-teal-500: #009688;
+  --color-teal-600: #00897b;
+  
+  --color-cream-50: #fffbf5;
+  --color-cream-100: #fff8f0;
+  --color-cream-200: #faf9f6;
+  --color-cream-300: #f5f3ef;
+  
+  --color-sage-300: #a5b4a3;
+  --color-sage-400: #8d9f8b;
+  --color-sage-500: #758a73;
+  
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d4d4d4;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a3a3a3;
 }
