@@ -50,10 +50,15 @@ export default function LoginPage() {
 
     try {
       const supabase = createClient()
+      // Get origin safely (works in both client and server contexts)
+      const origin = typeof window !== 'undefined' 
+        ? window.location.origin 
+        : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}${redirectTo}`,
+          redirectTo: `${origin}${redirectTo}`,
         },
       })
 
