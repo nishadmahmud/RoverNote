@@ -1,12 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Mountain, Mail, Lock, AlertCircle } from 'lucide-react'
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo') || '/journeys'
@@ -201,6 +201,28 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-teal-500 rounded-2xl mb-4">
+              <Mountain className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-3xl font-semibold text-gray-800 mb-2">
+              Welcome back, wanderer!
+            </h1>
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   )
 }
 
