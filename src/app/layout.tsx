@@ -4,6 +4,7 @@ import { Navigation } from '@/components/Navigation';
 import { Footer } from '@/components/Footer';
 import { Toaster } from 'sonner';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 export const metadata: Metadata = {
   title: 'RoverNote - Your Travel Scrapbook',
@@ -22,6 +23,7 @@ export default function RootLayout({
           <Navigation />
           <main className="min-h-screen">
             {children}
+            <SpeedInsights />
           </main>
           <Footer />
           <Toaster position="top-center" richColors />
