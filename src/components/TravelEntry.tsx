@@ -1,5 +1,5 @@
+import Link from 'next/link';
 import { MapPin, Heart, Calendar } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 
 interface TravelEntryProps {
@@ -29,7 +29,7 @@ export function TravelEntry({
 }: TravelEntryProps) {
   return (
     <Link 
-      to={`/journey/${id}`}
+      href={`/journey/${id}`}
       className="block relative bg-[var(--color-paper)] p-6 rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300 border-4 border-white cursor-pointer group"
       style={{ 
         transform: `rotate(${rotation}deg)`,
@@ -73,16 +73,18 @@ export function TravelEntry({
       {/* Must Dos preview */}
       {mustDos.length > 0 && (
         <div className="mb-4">
-          <div className="text-sm mb-2 text-gray-500 uppercase tracking-wide">Must Do's ✨</div>
+          <div className="text-sm mb-2 text-gray-500 uppercase tracking-wide">Must Do&apos;s ✨</div>
           <ul className="space-y-1">
             {mustDos.slice(0, 2).map((item, index) => (
               <li key={index} className="flex items-start gap-2">
                 <span className="text-[var(--color-secondary)] mt-1">•</span>
-                <span className="text-gray-700">{item}</span>
+                <span className="text-sm text-gray-600">{item}</span>
               </li>
             ))}
             {mustDos.length > 2 && (
-              <li className="text-sm text-gray-500 italic">+{mustDos.length - 2} more...</li>
+              <li className="text-sm text-[var(--color-secondary)]">
+                +{mustDos.length - 2} more...
+              </li>
             )}
           </ul>
         </div>
@@ -92,13 +94,17 @@ export function TravelEntry({
       <div className="flex items-center justify-between pt-4 border-t-2 border-dashed border-gray-200">
         <span className="text-sm text-gray-600">by {author}</span>
         <div className="flex items-center gap-1 text-[var(--color-primary)]">
-          <Heart size={18} fill="currentColor" />
+          <Heart size={18} />
           <span className="text-sm">{likes}</span>
         </div>
       </div>
-      
-      {/* Click indicator */}
-      <div className="absolute inset-0 rounded-lg border-2 border-[var(--color-secondary)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+
+      {/* Decorative corner */}
+      <div className="absolute bottom-2 right-2 w-8 h-8 opacity-10">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="var(--color-accent)" />
+        </svg>
+      </div>
     </Link>
   );
 }

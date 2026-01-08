@@ -1,47 +1,47 @@
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { Plane, Globe, Compass, MapPin, Camera, Heart, Users } from 'lucide-react';
-import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import { ImageWithFallback } from '@/components/figma/ImageWithFallback';
 
-export function Home() {
-  const features = [
-    {
-      icon: Camera,
-      title: 'Capture Memories',
-      description: 'Create beautiful scrapbook entries with photos and stories from your travels'
-    },
-    {
-      icon: MapPin,
-      title: 'Track Adventures',
-      description: 'Keep all your travel memories in one place with organized entries'
-    },
-    {
-      icon: Heart,
-      title: 'Share & Inspire',
-      description: 'Connect with fellow travelers and share your favorite destinations'
-    }
-  ];
+const features = [
+  {
+    icon: Camera,
+    title: 'Capture Memories',
+    description: 'Create beautiful scrapbook entries with photos and stories from your travels'
+  },
+  {
+    icon: MapPin,
+    title: 'Track Adventures',
+    description: 'Keep all your travel memories in one place with organized entries'
+  },
+  {
+    icon: Heart,
+    title: 'Share & Inspire',
+    description: 'Connect with fellow travelers and share your favorite destinations'
+  }
+];
 
-  const featuredDestinations = [
-    {
-      name: 'Paris',
-      country: 'France',
-      image: 'https://images.unsplash.com/photo-1431274172761-fca41d930114?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwYXJpcyUyMGVpZmZlbCUyMHRvd2VyfGVufDF8fHx8MTc2MzY1MjM5OHww&ixlib=rb-4.1.0&q=80&w=1080',
-      stories: 24
-    },
-    {
-      name: 'Bali',
-      country: 'Indonesia',
-      image: 'https://images.unsplash.com/photo-1717501787981-d5f28eb2df5f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYWxpJTIwYmVhY2glMjBzdW5zZXR8ZW58MXx8fHwxNzYzNjE3OTEwfDA&ixlib=rb-4.1.0&q=80&w=1080',
-      stories: 18
-    },
-    {
-      name: 'Tokyo',
-      country: 'Japan',
-      image: 'https://images.unsplash.com/photo-1641558996066-fcf78962c30a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0b2t5byUyMGphcGFuJTIwc3RyZWV0fGVufDF8fHx8MTc2MzY1NzUwMnww&ixlib=rb-4.1.0&q=80&w=1080',
-      stories: 31
-    }
-  ];
+const featuredDestinations = [
+  {
+    name: 'Paris',
+    country: 'France',
+    image: 'https://images.unsplash.com/photo-1431274172761-fca41d930114?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwYXJpcyUyMGVpZmZlbCUyMHRvd2VyfGVufDF8fHx8MTc2MzY1MjM5OHww&ixlib=rb-4.1.0&q=80&w=1080',
+    stories: 24
+  },
+  {
+    name: 'Bali',
+    country: 'Indonesia',
+    image: 'https://images.unsplash.com/photo-1717501787981-d5f28eb2df5f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYWxpJTIwYmVhY2glMjBzdW5zZXR8ZW58MXx8fHwxNzYzNjE3OTEwfDA&ixlib=rb-4.1.0&q=80&w=1080',
+    stories: 18
+  },
+  {
+    name: 'Tokyo',
+    country: 'Japan',
+    image: 'https://images.unsplash.com/photo-1641558996066-fcf78962c30a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0b2t5byUyMGphcGFuJTIwc3RyZWV0fGVufDF8fHx8MTc2MzY1NzUwMnww&ixlib=rb-4.1.0&q=80&w=1080',
+    stories: 31
+  }
+];
 
+export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -62,14 +62,14 @@ export function Home() {
             </p>
             <div className="flex items-center justify-center gap-4 flex-wrap">
               <Link
-                to="/my-scrapbook"
+                href="/my-scrapbook"
                 className="flex items-center gap-2 bg-[var(--color-primary)] text-white px-8 py-4 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
               >
                 <Plane size={24} />
                 <span>Start Your Scrapbook</span>
               </Link>
               <Link
-                to="/community"
+                href="/community"
                 className="flex items-center gap-2 bg-white text-[var(--color-secondary)] border-2 border-[var(--color-secondary)] px-8 py-4 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
               >
                 <Users size={24} />
@@ -112,7 +112,7 @@ export function Home() {
             {featuredDestinations.map((destination, index) => (
               <Link
                 key={index}
-                to="/community"
+                href="/community"
                 className="group relative bg-white p-4 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 border-4 border-white"
                 style={{ transform: `rotate(${(index % 2 ? -1 : 1) * 1}deg)` }}
               >
@@ -146,7 +146,7 @@ export function Home() {
             Join our community of travelers and start documenting your journeys today!
           </p>
           <Link
-            to="/my-scrapbook"
+            href="/my-scrapbook"
             className="inline-flex items-center gap-2 bg-white text-[var(--color-primary)] px-8 py-4 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
           >
             <Plane size={24} />

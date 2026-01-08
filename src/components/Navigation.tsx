@@ -1,17 +1,20 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+'use client';
+
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { Home, Users, BookOpen, User, Plane, Map, LogIn, LogOut } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 export function Navigation() {
-  const location = useLocation();
-  const navigate = useNavigate();
+  const pathname = usePathname();
+  const router = useRouter();
   const { user, profile, signOut } = useAuth();
   
   const handleSignOut = async () => {
     await signOut();
     toast.success('See you soon! 👋');
-    navigate('/');
+    window.location.href = '/';
   };
 
   const navItems = [
@@ -33,7 +36,7 @@ export function Navigation() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 hover:scale-105 transition-transform group">
+          <Link href="/" className="flex items-center gap-2 hover:scale-105 transition-transform group">
             <div className="relative">
               <div className="bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] p-2 rounded-lg shadow-md transform -rotate-3 group-hover:rotate-0 transition-transform">
                 <Plane className="text-white" size={20} />
@@ -50,11 +53,11 @@ export function Navigation() {
           <nav className="flex items-center gap-1">
             {visibleNavItems.map((item) => {
               const Icon = item.icon;
-              const isActive = location.pathname === item.path;
+              const isActive = pathname === item.path;
               return (
                 <Link
                   key={item.path}
-                  to={item.path}
+                  href={item.path}
                   className={`relative flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 group ${
                     isActive
                       ? 'text-[var(--color-primary)]'
@@ -89,14 +92,14 @@ export function Navigation() {
                     {profile?.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || '?'}
                   </div>
                   <span className="text-sm text-gray-700" style={{ fontFamily: 'Kalam, cursive' }}>
-                    {profile?.display_name || 'Traveler'}
+                    {profile?.display_name || user.email?.split('@')[0] || 'User'}
                   </span>
                 </div>
                 {/* Logout button */}
                 <button
+                  type="button"
                   onClick={handleSignOut}
                   className="flex items-center gap-1 px-3 py-2 text-gray-600 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 cursor-pointer"
-                  title="Sign Out"
                 >
                   <LogOut size={18} />
                   <span className="hidden sm:inline text-sm">Logout</span>
@@ -104,7 +107,7 @@ export function Navigation() {
               </div>
             ) : (
               <Link
-                to="/auth"
+                href="/auth"
                 className="flex items-center gap-2 ml-2 px-4 py-2 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] text-white rounded-full shadow-md hover:shadow-lg hover:scale-105 transition-all"
               >
                 <LogIn size={18} />

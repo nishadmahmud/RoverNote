@@ -1,51 +1,82 @@
-import React, { useState } from "react";
-import {
-  X,
-  Plus,
-  Trash2,
-  Upload,
-} from "lucide-react";
+'use client';
+
+import React, { useState, useRef } from "react";
+import { X, Plus, Trash2, Upload, Loader2, ImagePlus } from "lucide-react";
 
 interface AddEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (entry: NewTravelEntry) => void;
-}
-
-export interface NewTravelEntry {
-  location: string;
-  country: string;
-  date: string;
-  image: string;
-  notes: string;
-  mustDos: string[];
-  imageFile?: File;
+  onAdd: (entry: {
+    title: string;
+    location: string;
+    country: string;
+    date: string;
+    notes: string;
+    mustDos: string[];
+    isPublic: boolean;
+    mainImageFile?: File;
+    additionalImageFiles?: File[];
+    imageUrl?: string;
+    additionalImageUrls?: string[];
+  }) => void;
+  loading?: boolean;
 }
 
 export function AddEntryModal({
   isOpen,
   onClose,
   onAdd,
+  loading = false,
 }: AddEntryModalProps) {
   const [location, setLocation] = useState("");
   const [country, setCountry] = useState("");
   const [date, setDate] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>("");
+  const [authorName, setAuthorName] = useState("");
+  
+  // Main image (1)
+  const [mainImageFile, setMainImageFile] = useState<File | null>(null);
+  const [mainImagePreview, setMainImagePreview] = useState<string>("");
+  const [mainImageUrl, setMainImageUrl] = useState("");
+  
+  // Additional images (up to 4)
+  const [additionalImages, setAdditionalImages] = useState<{file: File; preview: string}[]>([]);
+  
   const [notes, setNotes] = useState("");
   const [mustDos, setMustDos] = useState<string[]>([""]);
-  const [uploadMethod, setUploadMethod] = useState<"upload" | "url">("upload");
+  const [isPublic, setIsPublic] = useState(true);
+  
+  const mainFileInputRef = useRef<HTMLInputElement>(null);
+  const additionalFileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMainFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setMainImageFile(file);
+    setMainImagePreview(URL.createObjectURL(file));
+    setMainImageUrl("");
+  };
 
-    setImageFile(file);
-    // Create preview URL
-    const previewUrl = URL.createObjectURL(file);
-    setImagePreview(previewUrl);
-    setImageUrl(""); // Clear URL if file is selected
+  const handleAdditionalFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    
+    const newImages: {file: File; preview: string}[] = [];
+    const remaining = 4 - additionalImages.length;
+    
+    for (let i = 0; i < Math.min(files.length, remaining); i++) {
+      newImages.push({
+        file: files[i],
+        preview: URL.createObjectURL(files[i])
+      });
+    }
+    
+    setAdditionalImages([...additionalImages, ...newImages]);
+    e.target.value = ''; // Reset input
+  };
+
+  const removeAdditionalImage = (index: number) => {
+    URL.revokeObjectURL(additionalImages[index].preview);
+    setAdditionalImages(additionalImages.filter((_, i) => i !== index));
   };
 
   const handleAddMustDo = () => {
@@ -53,7 +84,9 @@ export function AddEntryModal({
   };
 
   const handleRemoveMustDo = (index: number) => {
-    setMustDos(mustDos.filter((_, i) => i !== index));
+    if (mustDos.length > 1) {
+      setMustDos(mustDos.filter((_, i) => i !== index));
+    }
   };
 
   const handleMustDoChange = (index: number, value: string) => {
@@ -67,159 +100,117 @@ export function AddEntryModal({
     const filteredMustDos = mustDos.filter((item) => item.trim() !== "");
     
     onAdd({
+      title: location,
       location,
       country,
       date,
-      image: imageUrl,
       notes,
       mustDos: filteredMustDos,
-      imageFile: imageFile || undefined,
+      isPublic,
+      mainImageFile: mainImageFile || undefined,
+      additionalImageFiles: additionalImages.map(img => img.file),
+      imageUrl: mainImageUrl || undefined,
     });
+
+    // Cleanup previews
+    if (mainImagePreview) URL.revokeObjectURL(mainImagePreview);
+    additionalImages.forEach(img => URL.revokeObjectURL(img.preview));
 
     // Reset form
     setLocation("");
     setCountry("");
     setDate("");
-    setImageUrl("");
-    setImageFile(null);
-    setImagePreview("");
+    setAuthorName("");
+    setMainImageUrl("");
+    setMainImageFile(null);
+    setMainImagePreview("");
+    setAdditionalImages([]);
     setNotes("");
     setMustDos([""]);
+    setIsPublic(true);
   };
 
   const handleClose = () => {
-    // Clean up preview URL
-    if (imagePreview) {
-      URL.revokeObjectURL(imagePreview);
-    }
+    if (mainImagePreview) URL.revokeObjectURL(mainImagePreview);
+    additionalImages.forEach(img => URL.revokeObjectURL(img.preview));
     onClose();
   };
 
   if (!isOpen) return null;
 
-  const displayImage = imagePreview || imageUrl;
+  const displayMainImage = mainImagePreview || mainImageUrl;
+  const currentYear = new Date().getFullYear();
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-[var(--color-paper)] rounded-2xl shadow-2xl max-w-2xl w-full my-8 border-4 border-white relative">
-        {/* Decorative corners */}
-        <div className="absolute top-4 left-4 w-8 h-8 border-t-4 border-l-4 border-[var(--color-secondary)]"></div>
-        <div className="absolute top-4 right-4 w-8 h-8 border-t-4 border-r-4 border-[var(--color-secondary)]"></div>
-        <div className="absolute bottom-4 left-4 w-8 h-8 border-b-4 border-l-4 border-[var(--color-secondary)]"></div>
-        <div className="absolute bottom-4 right-4 w-8 h-8 border-b-4 border-r-4 border-[var(--color-secondary)]"></div>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 rounded-xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-y-auto relative">
+        {/* Paper texture overlay */}
+        <div className="absolute inset-0 opacity-40 pointer-events-none rounded-xl" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.5'/%3E%3C/svg%3E")`,
+          backgroundSize: '100px 100px'
+        }}></div>
 
-        <div
-          className="p-8 md:p-12 bg-[#f9f6f0] relative overflow-hidden"
-          style={{
-            backgroundImage: `repeating-linear-gradient(transparent, transparent 31px, #e5d5c5 31px, #e5d5c5 32px)`,
-            minHeight: "600px",
-          }}
+        {/* Close button */}
+        <button
+          onClick={handleClose}
+          className="absolute top-4 right-4 z-50 p-2 bg-white/80 hover:bg-white rounded-full shadow-lg transition-all"
         >
-          {/* Paper texture overlay */}
-          <div
-            className="absolute inset-0 opacity-20 pointer-events-none"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.5'/%3E%3C/svg%3E")`,
-              backgroundSize: "100px 100px",
-            }}
-          ></div>
+          <X size={24} />
+        </button>
 
-          {/* Decorative washi tape at top */}
-          <div
-            className="absolute -top-4 left-20 w-40 h-8 bg-gradient-to-r from-pink-300 to-purple-300 opacity-60 transform -rotate-2 shadow-md"
-            style={{
-              backgroundImage:
-                "repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,.4) 10px, rgba(255,255,255,.4) 20px)",
-            }}
-          ></div>
-          <div
-            className="absolute -top-4 right-20 w-40 h-8 bg-gradient-to-r from-yellow-300 to-orange-300 opacity-60 transform rotate-2 shadow-md"
-            style={{
-              backgroundImage:
-                "repeating-linear-gradient(-45deg, transparent, transparent 10px, rgba(255,255,255,.4) 10px, rgba(255,255,255,.4) 20px)",
-            }}
-          ></div>
-
-          {/* Decorative stamp */}
-          <div className="absolute top-6 right-8 transform rotate-12">
-            <svg width="60" height="60" viewBox="0 0 60 60">
-              <circle
-                cx="30"
-                cy="30"
-                r="25"
-                fill="none"
-                stroke="#ef4444"
-                strokeWidth="2"
-                opacity="0.6"
-              />
-              <text
-                x="30"
-                y="28"
-                textAnchor="middle"
-                fill="#ef4444"
-                fontSize="8"
-                fontFamily="Permanent Marker"
-                opacity="0.7"
-              >
-                NEW
-              </text>
-              <text
-                x="30"
-                y="38"
-                textAnchor="middle"
-                fill="#ef4444"
-                fontSize="9"
-                fontFamily="Permanent Marker"
-                opacity="0.7"
-              >
-                ENTRY
-              </text>
-            </svg>
-          </div>
-
-          <div className="relative z-10">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2
-                  style={{
-                    fontFamily: "Caveat, cursive",
-                    fontSize: "3rem",
-                    lineHeight: "1",
-                  }}
-                  className="text-[var(--color-primary)]"
-                >
-                  My Travel Story ✈
-                </h2>
-                {/* Handwritten underline */}
-                <svg className="w-56 h-4 mt-1" viewBox="0 0 220 10">
-                  <path
-                    d="M 5 5 Q 60 8, 110 5 T 215 5"
-                    stroke="#FF6B6B"
-                    strokeWidth="2"
-                    fill="none"
-                    strokeLinecap="round"
-                  />
+        <form onSubmit={handleSubmit} className="relative z-10 p-6">
+          <div className="grid md:grid-cols-2 gap-6">
+            
+            {/* Left Page */}
+            <div className="bg-[#f9f6f0] rounded-r-lg shadow-2xl p-6 md:p-8 relative border-l-4 border-amber-900/20"
+              style={{
+                backgroundImage: `repeating-linear-gradient(transparent, transparent 31px, #e5d5c5 31px, #e5d5c5 32px)`,
+                minHeight: '600px'
+              }}
+            >
+              {/* Decorative stamp */}
+              <div className="absolute top-4 right-4">
+                <svg width="70" height="70" viewBox="0 0 70 70">
+                  <circle cx="35" cy="35" r="30" fill="none" stroke="#8b5cf6" strokeWidth="2" opacity="0.7"/>
+                  <circle cx="35" cy="35" r="25" fill="none" stroke="#8b5cf6" strokeWidth="1" opacity="0.5"/>
+                  <text x="35" y="25" textAnchor="middle" fill="#8b5cf6" fontSize="7" fontFamily="Permanent Marker" opacity="0.8">
+                    {country.toUpperCase() || 'COUNTRY'}
+                  </text>
+                  <text x="35" y="38" textAnchor="middle" fill="#8b5cf6" fontSize="10" fontFamily="Permanent Marker" fontWeight="bold" opacity="0.9">
+                    {location || 'Location'}
+                  </text>
+                  <text x="35" y="48" textAnchor="middle" fill="#8b5cf6" fontSize="6" fontFamily="Permanent Marker" opacity="0.7">
+                    {date || 'Date'}
+                  </text>
+                  <text x="35" y="60" textAnchor="middle" fill="#8b5cf6" fontSize="7" fontFamily="Permanent Marker" opacity="0.8">
+                    ★ NEW ENTRY ★
+                  </text>
                 </svg>
               </div>
-              <button
-                onClick={handleClose}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
+              
+              {/* Washi tape at top */}
+              <div className="absolute -top-3 left-16 w-28 h-6 bg-gradient-to-r from-orange-300 to-yellow-300 opacity-70 transform -rotate-2 shadow-md"
+                style={{ 
+                  backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,.3) 10px, rgba(255,255,255,.3) 20px)'
+                }}
+              ></div>
 
-            <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Location & Country */}
-              <div className="grid grid-cols-2 gap-6">
+              {/* Header */}
+              <div className="mb-6 pr-16">
+                <h2 style={{ fontFamily: 'Caveat, cursive', fontSize: '2.5rem', lineHeight: '1' }} 
+                    className="text-gray-800 mb-1">
+                  My Travel Story ✈
+                </h2>
+                <svg className="w-40 h-3" viewBox="0 0 160 8">
+                  <path d="M 5 4 Q 40 7, 80 4 T 155 4" stroke="#f59e0b" strokeWidth="2" fill="none" strokeLinecap="round"/>
+                </svg>
+              </div>
+
+              {/* Location & Country inputs */}
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label
-                    style={{
-                      fontFamily: "Permanent Marker, cursive",
-                      fontSize: "1rem",
-                    }}
-                    className="block mb-2 text-[var(--color-primary)]"
-                  >
+                  <label style={{ fontFamily: 'Permanent Marker, cursive', fontSize: '0.8rem' }} 
+                         className="block mb-1 text-[var(--color-primary)]">
                     📍 Where did you go?
                   </label>
                   <input
@@ -227,22 +218,14 @@ export function AddEntryModal({
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     required
-                    style={{
-                      fontFamily: "Kalam, cursive",
-                      fontSize: "1.1rem",
-                    }}
-                    className="w-full px-4 py-3 bg-transparent border-b-2 border-dashed border-gray-400 focus:border-[var(--color-secondary)] focus:outline-none transition-colors"
                     placeholder="Paris"
+                    style={{ fontFamily: 'Kalam, cursive' }}
+                    className="w-full bg-transparent border-b-2 border-dashed border-gray-400 focus:border-[var(--color-secondary)] outline-none py-2 text-gray-700 placeholder-gray-400"
                   />
                 </div>
                 <div>
-                  <label
-                    style={{
-                      fontFamily: "Permanent Marker, cursive",
-                      fontSize: "1rem",
-                    }}
-                    className="block mb-2 text-[var(--color-primary)]"
-                  >
+                  <label style={{ fontFamily: 'Permanent Marker, cursive', fontSize: '0.8rem' }} 
+                         className="block mb-1 text-[var(--color-secondary)]">
                     🌍 Country
                   </label>
                   <input
@@ -250,258 +233,265 @@ export function AddEntryModal({
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
                     required
-                    style={{
-                      fontFamily: "Kalam, cursive",
-                      fontSize: "1.1rem",
-                    }}
-                    className="w-full px-4 py-3 bg-transparent border-b-2 border-dashed border-gray-400 focus:border-[var(--color-secondary)] focus:outline-none transition-colors"
                     placeholder="France"
+                    style={{ fontFamily: 'Kalam, cursive' }}
+                    className="w-full bg-transparent border-b-2 border-dashed border-gray-400 focus:border-[var(--color-secondary)] outline-none py-2 text-gray-700 placeholder-gray-400"
                   />
                 </div>
               </div>
 
-              {/* Date */}
-              <div>
-                <label
-                  style={{
-                    fontFamily: "Permanent Marker, cursive",
-                    fontSize: "1rem",
-                  }}
-                  className="block mb-2 text-[var(--color-secondary)]"
-                >
-                  📅 When?
-                </label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  required
-                  style={{
-                    fontFamily: "Kalam, cursive",
-                    fontSize: "1.1rem",
-                  }}
-                  className="w-full px-4 py-3 bg-transparent border-b-2 border-dashed border-gray-400 focus:border-[var(--color-secondary)] focus:outline-none transition-colors"
-                />
+              {/* Date & Author */}
+              <div className="grid grid-cols-2 gap-4 mb-5">
+                <div>
+                  <label style={{ fontFamily: 'Permanent Marker, cursive', fontSize: '0.8rem' }} 
+                         className="block mb-1 text-purple-600">
+                    📅 When?
+                  </label>
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    style={{ fontFamily: 'Kalam, cursive' }}
+                    className="w-full bg-transparent border-b-2 border-dashed border-gray-400 focus:border-[var(--color-secondary)] outline-none py-2 text-gray-700"
+                  />
+                </div>
+                <div>
+                  <label style={{ fontFamily: 'Permanent Marker, cursive', fontSize: '0.8rem' }} 
+                         className="block mb-1 text-orange-600">
+                    ✍️ Your Name
+                  </label>
+                  <input
+                    type="text"
+                    value={authorName}
+                    onChange={(e) => setAuthorName(e.target.value)}
+                    placeholder="Jane Doe"
+                    style={{ fontFamily: 'Kalam, cursive' }}
+                    className="w-full bg-transparent border-b-2 border-dashed border-gray-400 focus:border-[var(--color-secondary)] outline-none py-2 text-gray-700 placeholder-gray-400"
+                  />
+                </div>
               </div>
 
-              {/* Image Upload - Polaroid style */}
-              <div>
-                <label
-                  style={{
-                    fontFamily: "Permanent Marker, cursive",
-                    fontSize: "1rem",
-                  }}
-                  className="block mb-3 text-purple-600"
-                >
-                  📸 Add a photo!
+              {/* MAIN Polaroid Photo Upload */}
+              <div className="mb-4">
+                <label style={{ fontFamily: 'Permanent Marker, cursive', fontSize: '0.9rem' }} 
+                       className="block mb-2 text-[var(--color-primary)]">
+                  📸 Main Photo (Cover)
                 </label>
                 <div className="relative inline-block transform -rotate-1">
-                  <div className="bg-white p-4 pb-12 shadow-lg border-2 border-gray-200">
-                    {displayImage ? (
-                      <img
-                        src={displayImage}
-                        alt="Preview"
-                        className="w-64 h-48 object-cover"
-                      />
+                  <div className="bg-white p-3 pb-10 shadow-xl cursor-pointer" onClick={() => mainFileInputRef.current?.click()}>
+                    {displayMainImage ? (
+                      <img src={displayMainImage} alt="Main Preview" className="w-52 h-40 object-cover" />
                     ) : (
-                      <div className="w-64 h-48 bg-gray-100 flex items-center justify-center border-2 border-dashed border-gray-300">
-                        <Upload size={40} className="text-gray-400" />
+                      <div className="w-52 h-40 bg-gray-100 flex flex-col items-center justify-center border-2 border-dashed border-gray-300">
+                        <Upload size={36} className="text-gray-400 mb-2" />
+                        <span style={{ fontFamily: 'Kalam, cursive' }} className="text-gray-400 text-sm">Click to upload</span>
+                        <span className="text-gray-300 text-xs mt-1">Main cover photo</span>
                       </div>
                     )}
-                    <p
-                      style={{
-                        fontFamily: "Caveat, cursive",
-                        fontSize: "1.1rem",
-                      }}
-                      className="text-center mt-2 text-gray-600"
-                    >
-                      {displayImage ? "Looking good!" : "Add your photo"}
+                    <p style={{ fontFamily: 'Caveat, cursive', fontSize: '1rem' }} className="text-center mt-1 text-gray-600">
+                      {displayMainImage ? `${location || 'My trip'} ✨` : 'Add your memory!'}
                     </p>
                   </div>
                   {/* Paper clip */}
-                  <div className="absolute -top-3 right-4 w-6 h-10 border-2 border-gray-400 rounded-full transform rotate-45"></div>
+                  <div className="absolute -top-2 right-3 w-5 h-8 border-2 border-gray-400 rounded-full transform rotate-45"></div>
                 </div>
-                
-                <div className="flex gap-4 mt-4">
-                  <button
-                    type="button"
-                    onClick={() => setUploadMethod("upload")}
-                    className={`flex-1 px-4 py-2 rounded-full transition-colors ${
-                      uploadMethod === "upload"
-                        ? "bg-[var(--color-secondary)] text-white"
-                        : "bg-gray-100 text-gray-500"
-                    }`}
-                  >
-                    Upload File
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setUploadMethod("url")}
-                    className={`flex-1 px-4 py-2 rounded-full transition-colors ${
-                      uploadMethod === "url"
-                        ? "bg-[var(--color-secondary)] text-white"
-                        : "bg-gray-100 text-gray-500"
-                    }`}
-                  >
-                    Paste URL
-                  </button>
-                </div>
-                
-                {uploadMethod === "upload" ? (
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileSelect}
-                    className="w-full mt-4 px-4 py-2 bg-transparent border-b-2 border-dashed border-gray-400 focus:border-[var(--color-secondary)] focus:outline-none transition-colors"
-                  />
-                ) : (
-                  <input
-                    type="url"
-                    value={imageUrl}
-                    onChange={(e) => {
-                      setImageUrl(e.target.value);
-                      setImageFile(null);
-                      setImagePreview("");
-                    }}
-                    style={{
-                      fontFamily: "Kalam, cursive",
-                      fontSize: "1rem",
-                    }}
-                    className="w-full mt-4 px-4 py-2 bg-transparent border-b-2 border-dashed border-gray-400 focus:border-[var(--color-secondary)] focus:outline-none transition-colors"
-                    placeholder="https://example.com/image.jpg"
-                  />
-                )}
+                <input ref={mainFileInputRef} type="file" accept="image/*" onChange={handleMainFileSelect} className="hidden" />
               </div>
 
-              {/* Travel Notes */}
-              <div>
-                <label
-                  style={{
-                    fontFamily: "Permanent Marker, cursive",
-                    fontSize: "1rem",
-                  }}
-                  className="block mb-3 text-orange-600"
-                >
-                  ✎ My thoughts & memories...
+              {/* Additional Photos (4 small polaroids) */}
+              <div className="mb-4">
+                <label style={{ fontFamily: 'Permanent Marker, cursive', fontSize: '0.8rem' }} 
+                       className="block mb-2 text-[var(--color-secondary)]">
+                  🖼️ Additional Photos ({additionalImages.length}/4)
                 </label>
+                <div className="flex flex-wrap gap-3">
+                  {additionalImages.map((img, index) => (
+                    <div key={index} className="relative transform hover:scale-105 transition-transform"
+                         style={{ transform: `rotate(${index % 2 === 0 ? '-' : ''}${2 + index}deg)` }}>
+                      <div className="bg-white p-2 pb-6 shadow-lg">
+                        <img src={img.preview} alt={`Extra ${index + 1}`} className="w-20 h-20 object-cover" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeAdditionalImage(index)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600"
+                      >
+                        <X size={12} />
+                      </button>
+                      {/* Washi tape */}
+                      <div className="absolute -bottom-1 left-0 right-0 h-3 bg-pink-300 opacity-50"></div>
+                    </div>
+                  ))}
+                  
+                  {additionalImages.length < 4 && (
+                    <div 
+                      onClick={() => additionalFileInputRef.current?.click()}
+                      className="w-24 h-28 bg-white p-2 pb-6 shadow-lg cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-gray-300 hover:border-[var(--color-secondary)] transition-colors transform rotate-1"
+                    >
+                      <ImagePlus size={24} className="text-gray-400 mb-1" />
+                      <span style={{ fontFamily: 'Kalam, cursive' }} className="text-gray-400 text-xs text-center">
+                        Add more
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <input 
+                  ref={additionalFileInputRef} 
+                  type="file" 
+                  accept="image/*" 
+                  multiple
+                  onChange={handleAdditionalFileSelect} 
+                  className="hidden" 
+                />
+              </div>
+
+              {/* Decorative ticket */}
+              <div className="inline-block bg-orange-100 border-2 border-dashed border-orange-400 px-3 py-1 transform rotate-1 shadow-sm">
+                <p style={{ fontFamily: 'Permanent Marker, cursive', fontSize: '0.7rem' }} className="text-orange-800">
+                  ✈ {additionalImages.length + (displayMainImage ? 1 : 0)}/5 PHOTOS
+                </p>
+              </div>
+            </div>
+
+            {/* Right Page */}
+            <div className="bg-[#f9f6f0] rounded-l-lg shadow-2xl p-6 md:p-8 relative border-r-4 border-amber-900/20"
+              style={{
+                backgroundImage: `repeating-linear-gradient(transparent, transparent 31px, #e5d5c5 31px, #e5d5c5 32px)`,
+                minHeight: '600px'
+              }}
+            >
+              {/* Washi tape */}
+              <div className="absolute top-0 left-0 w-full h-5 bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300 opacity-40"
+                style={{ backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(255,255,255,.5) 20px, rgba(255,255,255,.5) 40px)' }}
+              ></div>
+
+              {/* Country Stamps */}
+              <div className="absolute top-10 right-4 flex gap-1">
+                <div className="transform rotate-12">
+                  <svg width="60" height="60" viewBox="0 0 60 60">
+                    <circle cx="30" cy="30" r="26" fill="none" stroke="#dc2626" strokeWidth="2" opacity="0.8"/>
+                    <text x="30" y="28" textAnchor="middle" fill="#dc2626" fontSize="8" fontFamily="Permanent Marker" opacity="0.9">
+                      {country.toUpperCase() || 'NEW'}
+                    </text>
+                    <text x="30" y="40" textAnchor="middle" fill="#dc2626" fontSize="7" fontFamily="Permanent Marker" opacity="0.8">
+                      ★ ENTRY ★
+                    </text>
+                  </svg>
+                </div>
+                <div className="transform -rotate-6">
+                  <svg width="50" height="50" viewBox="0 0 50 50">
+                    <rect x="5" y="5" width="40" height="40" fill="none" stroke="#16a34a" strokeWidth="2" opacity="0.7"/>
+                    <text x="25" y="28" textAnchor="middle" fill="#16a34a" fontSize="8" fontFamily="Permanent Marker" opacity="0.8">
+                      {currentYear}
+                    </text>
+                  </svg>
+                </div>
+              </div>
+              
+              {/* The Story section */}
+              <div className="mb-6 mt-6">
+                <h3 style={{ fontFamily: 'Permanent Marker, cursive', fontSize: '1.3rem' }} 
+                    className="text-[var(--color-primary)] mb-3 flex items-center gap-2">
+                  📖 The Story
+                </h3>
                 <div className="relative">
-                  {/* Highlight effect */}
-                  <div className="absolute inset-0 bg-yellow-100 opacity-20 transform -skew-y-1 pointer-events-none"></div>
+                  <div className="absolute inset-0 bg-yellow-200 opacity-15 transform -skew-y-1 pointer-events-none"></div>
                   <textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    required
                     rows={5}
-                    style={{
-                      fontFamily: "Kalam, cursive",
-                      fontSize: "1.05rem",
-                      lineHeight: "2rem",
-                    }}
-                    className="w-full px-4 py-3 bg-transparent border-2 border-gray-300 rounded focus:border-[var(--color-secondary)] focus:outline-none transition-colors resize-none relative z-10"
-                    placeholder="This place was incredible! The food, the people, the sights..."
+                    placeholder="This place was incredible! The food, the people, the sights... Share your story here!"
+                    style={{ fontFamily: 'Kalam, cursive', fontSize: '0.95rem', lineHeight: '1.8rem' }}
+                    className="w-full bg-transparent border border-gray-200 rounded p-3 focus:border-[var(--color-secondary)] outline-none text-gray-800 placeholder-gray-400 resize-none relative z-10"
                   />
+                </div>
+                <div className="flex gap-1 mt-1">
+                  {[...Array(5)].map((_, i) => (
+                    <span key={i} className="text-yellow-500 text-sm">★</span>
+                  ))}
                 </div>
               </div>
 
               {/* Must Do's with checkboxes */}
-              <div>
-                <label
-                  style={{
-                    fontFamily: "Permanent Marker, cursive",
-                    fontSize: "1rem",
-                  }}
-                  className="block mb-3 text-[var(--color-secondary)]"
-                >
-                  ✨ Must Do's!
-                </label>
-                <div className="space-y-3">
+              <div className="mb-6">
+                <h3 style={{ fontFamily: 'Permanent Marker, cursive', fontSize: '1.2rem' }} 
+                    className="text-[var(--color-secondary)] mb-3">
+                  ✨ Must Do&apos;s!
+                </h3>
+                <div className="space-y-2">
                   {mustDos.map((mustDo, index) => (
-                    <div key={index} className="flex gap-3 items-start">
-                      <div className="w-5 h-5 border-2 border-gray-600 mt-2 flex-shrink-0"></div>
+                    <div key={index} className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-gray-500 flex-shrink-0"></div>
                       <input
                         type="text"
                         value={mustDo}
                         onChange={(e) => handleMustDoChange(index, e.target.value)}
-                        style={{
-                          fontFamily: "Kalam, cursive",
-                          fontSize: "1rem",
-                          lineHeight: "2rem",
-                        }}
-                        className="flex-1 px-3 py-2 bg-transparent border-b border-dashed border-gray-300 focus:border-[var(--color-secondary)] focus:outline-none transition-colors"
-                        placeholder="Visit the Eiffel Tower at sunset"
+                        placeholder={`Must do #${index + 1}...`}
+                        style={{ fontFamily: 'Kalam, cursive', fontSize: '0.9rem' }}
+                        className="flex-1 bg-transparent border-b border-dashed border-gray-300 focus:border-[var(--color-secondary)] outline-none py-1 text-gray-700 placeholder-gray-400"
                       />
                       {mustDos.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveMustDo(index)}
-                          className="p-2 text-red-400 hover:text-red-600 transition-colors"
-                        >
-                          <Trash2 size={18} />
+                        <button type="button" onClick={() => handleRemoveMustDo(index)} className="text-red-400 hover:text-red-600">
+                          <Trash2 size={16} />
                         </button>
                       )}
                     </div>
                   ))}
-                  <button
-                    type="button"
-                    onClick={handleAddMustDo}
-                    style={{
-                      fontFamily: "Kalam, cursive",
-                      fontSize: "1rem",
-                    }}
-                    className="flex items-center gap-2 text-[var(--color-secondary)] hover:text-[var(--color-primary)] transition-colors mt-2"
-                  >
-                    <Plus size={20} />
-                    <span>Add another must-do</span>
+                  <button type="button" onClick={handleAddMustDo}
+                    style={{ fontFamily: 'Kalam, cursive' }}
+                    className="flex items-center gap-1 text-[var(--color-secondary)] hover:text-[var(--color-primary)] transition-colors text-sm mt-2">
+                    <Plus size={16} />
+                    Add another must-do
                   </button>
                 </div>
               </div>
 
-              {/* Decorative arrow doodle */}
-              <svg className="w-24 h-12 my-4" viewBox="0 0 100 50">
-                <path
-                  d="M 10 25 L 70 25 L 65 20 M 70 25 L 65 30"
-                  stroke="#8b5cf6"
-                  strokeWidth="2"
-                  fill="none"
-                  strokeLinecap="round"
-                />
-              </svg>
-
-              {/* Buttons - Sticker style */}
-              <div className="flex gap-4 pt-6">
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  style={{
-                    fontFamily: "Permanent Marker, cursive",
-                  }}
-                  className="flex-1 px-6 py-4 rounded-full border-3 border-gray-400 hover:bg-gray-100 transition-all transform hover:scale-105"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  style={{
-                    fontFamily: "Permanent Marker, cursive",
-                  }}
-                  className="flex-1 px-6 py-4 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] text-white hover:shadow-xl transition-all transform hover:scale-105 shadow-lg"
-                >
-                  ✈ Add to Journal!
-                </button>
+              {/* Public toggle */}
+              <div className="bg-blue-50 border-2 border-blue-300 p-3 rounded transform -rotate-1 mb-6">
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="isPublic" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)}
+                    className="w-4 h-4 accent-[var(--color-secondary)]"
+                  />
+                  <label htmlFor="isPublic" style={{ fontFamily: 'Kalam, cursive' }} className="text-gray-700 text-sm">
+                    Share with the community (public)
+                  </label>
+                </div>
               </div>
-            </form>
 
-            {/* Decorative stickers at bottom */}
-            <div className="flex justify-end gap-2 mt-6">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-200 to-red-200 flex items-center justify-center transform rotate-12 shadow-sm">
-                <span style={{ fontFamily: "Permanent Marker, cursive", fontSize: "1.2rem" }}>★</span>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-200 to-purple-200 flex items-center justify-center transform -rotate-6 shadow-sm">
-                <span style={{ fontFamily: "Permanent Marker, cursive", fontSize: "1.2rem" }}>✈</span>
+              {/* Bottom stamps */}
+              <div className="flex gap-2 justify-end">
+                <div className="w-12 h-12 border-2 border-red-500 rounded-full flex items-center justify-center transform rotate-12">
+                  <span style={{ fontFamily: 'Permanent Marker, cursive', fontSize: '0.5rem' }} className="text-red-500 text-center">
+                    NEW!
+                  </span>
+                </div>
+                <div className="w-12 h-12 border-2 border-green-500 transform -rotate-6 flex items-center justify-center">
+                  <span style={{ fontFamily: 'Permanent Marker, cursive', fontSize: '0.6rem' }} className="text-green-500">
+                    ✓
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+
+          {/* Action buttons - sticker style */}
+          <div className="flex justify-center gap-4 mt-6">
+            <button type="button" onClick={handleClose}
+              className="bg-white border-2 border-gray-300 text-gray-700 px-8 py-3 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all transform -rotate-1">
+              <span style={{ fontFamily: 'Permanent Marker, cursive' }}>Cancel</span>
+            </button>
+            <button type="submit" disabled={loading || !location || !country}
+              className="bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] text-white px-8 py-3 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all transform rotate-1 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  <span style={{ fontFamily: 'Permanent Marker, cursive' }}>✈ Add to Journal!</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

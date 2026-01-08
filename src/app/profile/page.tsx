@@ -1,33 +1,53 @@
-import { useState } from 'react';
-import { Camera, MapPin, Calendar, Award, Edit2, Save, Map, Loader2, Plane } from 'lucide-react';
-import { ImageWithFallback } from '../components/figma/ImageWithFallback';
-import { InteractiveWorldMap } from '../components/InteractiveWorldMap';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { useMyJourneys } from '../hooks/useJourneys';
-import { supabase, STORAGE_BUCKET, getImageUrl } from '../lib/supabase';
+'use client';
+
+import { useState, useRef } from 'react';
+import Link from 'next/link';
+import { Camera, MapPin, Calendar, Award, Edit2, Save, Plane, Loader2, Upload } from 'lucide-react';
+import { ImageWithFallback } from '@/components/figma/ImageWithFallback';
+import { useAuth } from '@/hooks/useAuth';
+import { useMyJourneys } from '@/hooks/useJourneys';
 import { toast } from 'sonner';
 
-export function Profile() {
-  const navigate = useNavigate();
-  const { user, profile, loading: authLoading, updateProfile } = useAuth();
-  const { journeys, loading: journeysLoading } = useMyJourneys();
+export default function ProfilePage() {
+  const { user, profile, loading: authLoading, updateProfile, uploadAvatar } = useAuth();
+  const { journeys } = useMyJourneys(user?.id);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [editedProfile, setEditedProfile] = useState({
     display_name: '',
     bio: '',
     location: '',
   });
 
-  // Format date for display
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    const { error } = await uploadAvatar(file);
+    
+    if (error) {
+      toast.error('Failed to upload avatar: ' + error.message);
+    } else {
+      toast.success('Avatar updated! 🎉');
+    }
+    setUploadingAvatar(false);
   };
 
-  // Start editing
   const handleStartEdit = () => {
     setEditedProfile({
       display_name: profile?.display_name || '',
@@ -37,7 +57,6 @@ export function Profile() {
     setIsEditing(true);
   };
 
-  // Save changes
   const handleSave = async () => {
     setSaving(true);
     const { error } = await updateProfile(editedProfile);
@@ -51,37 +70,15 @@ export function Profile() {
     setSaving(false);
   };
 
-  // Handle avatar upload
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-
-    const fileExt = file.name.split('.').pop();
-    const fileName = `avatars/${user.id}.${fileExt}`;
-
-    // Upload to storage
-    const { error: uploadError } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .upload(fileName, file, { upsert: true });
-
-    if (uploadError) {
-      toast.error('Failed to upload avatar');
-      return;
+  // Show loading or sign in prompt if not logged in
+  if (!user) {
+    if (authLoading) {
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-[var(--color-bg)] to-white flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--color-primary)]" />
+        </div>
+      );
     }
-
-    // Update profile with new avatar URL
-    const avatarUrl = getImageUrl(fileName);
-    const { error } = await updateProfile({ avatar_url: avatarUrl });
-    
-    if (error) {
-      toast.error('Failed to update avatar');
-    } else {
-      toast.success('Avatar updated! 📸');
-    }
-  };
-
-  // Show login prompt if not authenticated
-  if (!authLoading && !user) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[var(--color-bg)] to-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -95,7 +92,7 @@ export function Profile() {
                 Create an account to start your travel journey!
               </p>
               <Link
-                to="/auth"
+                href="/auth"
                 className="inline-flex items-center gap-2 bg-[var(--color-primary)] text-white px-8 py-4 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
               >
                 <Plane size={20} />
@@ -108,75 +105,61 @@ export function Profile() {
     );
   }
 
-  // Loading state
-  if (authLoading || journeysLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-[var(--color-bg)] to-white flex items-center justify-center">
-        <Loader2 className="w-12 h-12 animate-spin text-[var(--color-primary)]" />
-      </div>
-    );
-  }
-
-  // Calculate stats
   const uniqueCountries = [...new Set(journeys.map(j => j.country).filter(Boolean))];
   const totalLikes = journeys.reduce((sum, j) => sum + (j.likes_count || 0), 0);
 
-  // Transform journeys for map
-  const mapEntries = journeys.map(j => ({
-    id: j.id,
-    location: j.location || j.title,
-    country: j.country || '',
-    date: formatDate(j.start_date),
-    image: j.image_url || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800',
-    author: profile?.display_name || 'You',
-    likes: j.likes_count || 0
-  }));
-
   const stats = [
     { label: 'Entries', value: journeys.length, icon: Camera, color: 'from-[var(--color-primary)] to-[#ff5252]' },
-    { label: 'Countries Visited', value: uniqueCountries.length, icon: MapPin, color: 'from-[var(--color-secondary)] to-[#45b8b0]' },
-    { label: 'Total Likes', value: totalLikes, icon: Award, color: 'from-[var(--color-accent)] to-[#ffd93d]' }
-  ];
-
-  const badges = [
-    { name: 'Early Explorer', description: 'Joined RoverNote', emoji: '🌟', earned: true },
-    { name: 'Photo Master', description: '10+ entries with photos', emoji: '📸', earned: journeys.length >= 10 },
-    { name: 'Globetrotter', description: 'Visited 5+ countries', emoji: '🌍', earned: uniqueCountries.length >= 5 },
-    { name: 'Community Star', description: '100+ likes received', emoji: '⭐', earned: totalLikes >= 100 }
+    { label: 'Countries', value: uniqueCountries.length, icon: MapPin, color: 'from-[var(--color-secondary)] to-[#45b8b0]' },
+    { label: 'Likes', value: totalLikes, icon: Award, color: 'from-[var(--color-accent)] to-[#ffd93d]' }
   ];
 
   const memberSince = profile?.created_at 
     ? new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     : 'Recently';
 
+  const displayName = profile?.display_name || user.email?.split('@')[0] || 'Traveler';
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[var(--color-bg)] to-white">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Profile Header */}
         <div className="bg-white rounded-3xl shadow-xl p-8 mb-8 border-4 border-[var(--color-paper)] relative overflow-hidden">
-          {/* Decorative background */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[var(--color-secondary)]/20 to-[var(--color-primary)]/20 rounded-full blur-3xl -z-0"></div>
           
           <div className="relative z-10">
             <div className="flex flex-col md:flex-row gap-8 items-center md:items-start">
               {/* Avatar */}
-              <div className="relative">
+              <div className="relative group">
                 <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-white shadow-xl">
                   <ImageWithFallback
-                    src={profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.display_name || 'User')}&background=random&size=160`}
-                    alt={profile?.display_name || 'User'}
+                    src={profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random&size=160`}
+                    alt={displayName}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <label className="absolute bottom-2 right-2 bg-[var(--color-primary)] text-white p-3 rounded-full shadow-lg hover:scale-110 transition-transform cursor-pointer">
-                  <Camera size={20} />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarUpload}
-                    className="hidden"
-                  />
-                </label>
+                {/* Avatar upload overlay */}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingAvatar}
+                  className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                >
+                  {uploadingAvatar ? (
+                    <Loader2 className="w-8 h-8 text-white animate-spin" />
+                  ) : (
+                    <div className="text-center text-white">
+                      <Camera className="w-8 h-8 mx-auto mb-1" />
+                      <span className="text-xs">Change Photo</span>
+                    </div>
+                  )}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
               </div>
 
               {/* Profile Info */}
@@ -207,7 +190,7 @@ export function Profile() {
                   </div>
                 ) : (
                   <>
-                    <h2 className="text-[var(--color-text)] mb-2">{profile?.display_name || 'Traveler'}</h2>
+                    <h2 className="text-[var(--color-text)] mb-2">{displayName}</h2>
                     <p className="text-gray-600 mb-4">{profile?.bio || 'No bio yet. Tell us about your travel adventures!'}</p>
                     <div className="flex flex-wrap gap-4 justify-center md:justify-start text-sm text-gray-500">
                       {profile?.location && (
@@ -271,7 +254,7 @@ export function Profile() {
         {/* Countries Visited */}
         {uniqueCountries.length > 0 && (
           <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border-4 border-[var(--color-paper)]">
-            <h3 className="text-[var(--color-text)] mb-6">Countries I've Explored</h3>
+            <h3 className="text-[var(--color-text)] mb-6">Countries I&apos;ve Explored</h3>
             <div className="flex flex-wrap gap-3">
               {uniqueCountries.map((country, index) => (
                 <div
@@ -284,55 +267,6 @@ export function Profile() {
             </div>
           </div>
         )}
-
-        {/* Travel Map */}
-        {mapEntries.length > 0 && (
-          <div className="mt-8 mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-[var(--color-text)]" style={{ fontFamily: 'Caveat, cursive' }}>
-                🗺️ My Travel Journey
-              </h3>
-              <Link
-                to="/map"
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] text-white rounded-full hover:shadow-lg transition-all"
-                style={{ fontFamily: 'Permanent Marker, cursive', fontSize: '0.9rem' }}
-              >
-                <Map size={18} />
-                <span>Full Map View</span>
-              </Link>
-            </div>
-            <InteractiveWorldMap 
-              entries={mapEntries} 
-              showRoutes={true}
-              showHeatmap={false}
-              personalMode={true}
-            />
-          </div>
-        )}
-
-        {/* Badges */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 border-4 border-[var(--color-paper)]">
-          <h3 className="text-[var(--color-text)] mb-6">Achievements & Badges</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {badges.map((badge, index) => (
-              <div
-                key={index}
-                className={`flex items-start gap-4 p-6 rounded-xl border-2 transition-shadow ${
-                  badge.earned 
-                    ? 'bg-gradient-to-br from-[var(--color-bg)] to-white border-[var(--color-accent)]/30 hover:shadow-lg' 
-                    : 'bg-gray-50 border-gray-200 opacity-50'
-                }`}
-              >
-                <div className="text-4xl">{badge.emoji}</div>
-                <div>
-                  <h4 className="text-[var(--color-text)] mb-1">{badge.name}</h4>
-                  <p className="text-sm text-gray-600">{badge.description}</p>
-                  {!badge.earned && <p className="text-xs text-gray-400 mt-1">Not yet earned</p>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );

@@ -1,168 +1,184 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase, STORAGE_BUCKET, getImageUrl } from '../lib/supabase';
-import type { Journey, JourneyInsert, JourneyWithProfile } from '../lib/database.types';
-import { useAuth } from '../contexts/AuthContext';
+'use client';
 
-// Fetch all public journeys (for community page)
-export function useCommunityJourneys() {
-  const [journeys, setJourneys] = useState<JourneyWithProfile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+import { useState, useEffect } from 'react';
+import { createClient } from '@/utils/supabase/client';
 
-  const fetchJourneys = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      // First, try with the join
-      const { data, error: joinError } = await supabase
-        .from('journeys')
-        .select(`
-          *,
-          profiles (display_name, avatar_url)
-        `)
-        .eq('is_public', true)
-        .order('created_at', { ascending: false });
-
-      if (joinError) {
-        // Fallback: fetch without join if relationship fails
-        console.warn('Join query failed, using fallback:', joinError.message);
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('journeys')
-          .select('*')
-          .eq('is_public', true)
-          .order('created_at', { ascending: false });
-        
-        if (fallbackError) {
-          setError(fallbackError.message);
-        } else {
-          // Add empty profiles object
-          setJourneys((fallbackData || []).map(j => ({ ...j, profiles: null })));
-        }
-      } else {
-        setJourneys(data || []);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    }
-    
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    fetchJourneys();
-  }, [fetchJourneys]);
-
-  return { journeys, loading, error, refetch: fetchJourneys };
+interface Journey {
+  id: string;
+  user_id: string;
+  title: string;
+  location: string | null;
+  country: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  body: string | null;
+  image_url: string | null;
+  image_path: string | null;
+  additional_images: string[] | null; // NEW: 4 additional images
+  tags: string[] | null;
+  is_public: boolean;
+  likes_count: number;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
-// Fetch user's own journeys (for my scrapbook page)
-export function useMyJourneys() {
-  const { user } = useAuth();
+interface JourneyInsert {
+  title: string;
+  location?: string | null;
+  country?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  body?: string | null;
+  image_url?: string | null;
+  image_path?: string | null;
+  additional_images?: string[] | null; // NEW
+  tags?: string[] | null;
+  is_public?: boolean;
+}
+
+// Simple hook - just fetches public journeys
+export function useCommunityJourneys() {
   const [journeys, setJourneys] = useState<Journey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchJourneys = useCallback(async () => {
-    if (!user) {
+  useEffect(() => {
+    const supabase = createClient();
+    
+    supabase
+      .from('journeys')
+      .select('*')
+      .eq('is_public', true)
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) setError(error.message);
+        else setJourneys(data || []);
+        setLoading(false);
+      });
+  }, []);
+
+  return { journeys, loading, error };
+}
+
+// Simple hook - fetches user's journeys
+export function useMyJourneys(userId: string | undefined) {
+  const [journeys, setJourneys] = useState<Journey[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!userId) {
       setJourneys([]);
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    const { data, error } = await supabase
+    const supabase = createClient();
+    
+    supabase
       .from('journeys')
       .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) setError(error.message);
+        else setJourneys(data || []);
+        setLoading(false);
+      });
+  }, [userId]);
 
-    if (error) {
-      setError(error.message);
-    } else {
-      setJourneys(data || []);
-    }
-    setLoading(false);
-  }, [user]);
+  const refetch = () => {
+    if (!userId) return;
+    
+    setLoading(true);
+    const supabase = createClient();
+    
+    supabase
+      .from('journeys')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) setError(error.message);
+        else setJourneys(data || []);
+        setLoading(false);
+      });
+  };
 
-  useEffect(() => {
-    fetchJourneys();
-  }, [fetchJourneys]);
-
-  return { journeys, loading, error, refetch: fetchJourneys };
+  return { journeys, loading, error, refetch };
 }
 
-// Fetch single journey by ID
-export function useJourney(id: string | undefined) {
-  const [journey, setJourney] = useState<JourneyWithProfile | null>(null);
+// Keep old hook for backward compatibility
+export function useJourneys(options: { userId?: string; isPublic?: boolean } = {}) {
+  const [journeys, setJourneys] = useState<Journey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id) {
+    // No options = no fetch needed
+    if (!options.userId && !options.isPublic) {
       setLoading(false);
       return;
     }
 
-    const fetchJourney = async () => {
-      setLoading(true);
-      setError(null);
-      
-      try {
-        // First, try with the join
-        const { data, error: joinError } = await supabase
-          .from('journeys')
-          .select(`
-            *,
-            profiles (display_name, avatar_url)
-          `)
-          .eq('id', id)
-          .single();
+    const supabase = createClient();
+    
+    let query = supabase
+      .from('journeys')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-        if (joinError) {
-          // Fallback: fetch without join
-          console.warn('Join query failed, using fallback:', joinError.message);
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from('journeys')
-            .select('*')
-            .eq('id', id)
-            .single();
-          
-          if (fallbackError) {
-            setError(fallbackError.message);
-          } else {
-            setJourney(fallbackData ? { ...fallbackData, profiles: null } : null);
-          }
-        } else {
-          setJourney(data);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      }
-      
+    if (options.userId) {
+      query = query.eq('user_id', options.userId);
+    } else if (options.isPublic) {
+      query = query.eq('is_public', true);
+    }
+
+    query.then(({ data, error: err }) => {
+      if (err) setError(err.message);
+      else setJourneys(data || []);
       setLoading(false);
-    };
+    });
+  }, [options.userId, options.isPublic]);
 
-    fetchJourney();
-  }, [id]);
+  const refetch = () => {
+    if (!options.userId && !options.isPublic) return;
+    
+    setLoading(true);
+    const supabase = createClient();
+    
+    let query = supabase
+      .from('journeys')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  return { journey, loading, error };
+    if (options.userId) {
+      query = query.eq('user_id', options.userId);
+    } else if (options.isPublic) {
+      query = query.eq('is_public', true);
+    }
+
+    query.then(({ data, error: err }) => {
+      if (err) setError(err.message);
+      else setJourneys(data || []);
+      setLoading(false);
+    });
+  };
+
+  return { journeys, loading, error, refetch };
 }
 
-// Journey mutations
 export function useJourneyMutations() {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  // Upload image to storage
-  const uploadImage = async (file: File): Promise<string | null> => {
-    if (!user) return null;
-
+  const uploadImage = async (file: File, userId: string): Promise<string | null> => {
+    const supabase = createClient();
     const fileExt = file.name.split('.').pop();
-    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+    const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
 
     const { error } = await supabase.storage
-      .from(STORAGE_BUCKET)
+      .from('journey-images')
       .upload(fileName, file);
 
     if (error) {
@@ -170,26 +186,51 @@ export function useJourneyMutations() {
       return null;
     }
 
-    return fileName;
+    const { data: { publicUrl } } = supabase.storage
+      .from('journey-images')
+      .getPublicUrl(fileName);
+
+    return publicUrl;
   };
 
-  // Create journey
+  // Upload multiple images
+  const uploadMultipleImages = async (files: File[], userId: string): Promise<string[]> => {
+    const urls: string[] = [];
+    for (const file of files) {
+      const url = await uploadImage(file, userId);
+      if (url) urls.push(url);
+    }
+    return urls;
+  };
+
   const createJourney = async (
-    journey: Omit<JourneyInsert, 'user_id'>,
-    imageFile?: File
+    journey: JourneyInsert, 
+    mainImageFile?: File,
+    additionalImageFiles?: File[]
   ) => {
-    if (!user) return { error: new Error('Not authenticated'), data: null };
-
     setLoading(true);
-    let imagePath: string | null = null;
-    let imageUrl: string | null = journey.image_url || null;
+    const supabase = createClient();
 
-    // Upload image if provided
-    if (imageFile) {
-      imagePath = await uploadImage(imageFile);
-      if (imagePath) {
-        imageUrl = getImageUrl(imagePath);
-      }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setLoading(false);
+      return { error: new Error('Not authenticated'), data: null };
+    }
+
+    // Upload main image
+    let imageUrl = journey.image_url || null;
+    let imagePath: string | null = null;
+
+    if (mainImageFile) {
+      imageUrl = await uploadImage(mainImageFile, user.id);
+      imagePath = imageUrl;
+    }
+
+    // Upload additional images (up to 4)
+    let additionalImages: string[] = journey.additional_images || [];
+    if (additionalImageFiles && additionalImageFiles.length > 0) {
+      const uploadedUrls = await uploadMultipleImages(additionalImageFiles, user.id);
+      additionalImages = [...additionalImages, ...uploadedUrls].slice(0, 4); // Max 4
     }
 
     const { data, error } = await supabase
@@ -197,8 +238,9 @@ export function useJourneyMutations() {
       .insert({
         ...journey,
         user_id: user.id,
-        image_path: imagePath,
         image_url: imageUrl,
+        image_path: imagePath,
+        additional_images: additionalImages.length > 0 ? additionalImages : null,
       })
       .select()
       .single();
@@ -207,27 +249,34 @@ export function useJourneyMutations() {
     return { data, error: error ? new Error(error.message) : null };
   };
 
-  // Update journey
   const updateJourney = async (
-    id: string,
-    updates: Partial<Journey>,
-    newImageFile?: File
+    id: string, 
+    updates: Partial<Journey>, 
+    newMainImageFile?: File,
+    newAdditionalImageFiles?: File[]
   ) => {
-    if (!user) return { error: new Error('Not authenticated') };
-
     setLoading(true);
-    let updateData = { ...updates, updated_at: new Date().toISOString() };
+    const supabase = createClient();
 
-    // Upload new image if provided
-    if (newImageFile) {
-      const imagePath = await uploadImage(newImageFile);
-      if (imagePath) {
-        updateData = {
-          ...updateData,
-          image_path: imagePath,
-          image_url: getImageUrl(imagePath),
-        };
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setLoading(false);
+      return { error: new Error('Not authenticated') };
+    }
+
+    let updateData: Record<string, unknown> = { ...updates, updated_at: new Date().toISOString() };
+
+    if (newMainImageFile) {
+      const imageUrl = await uploadImage(newMainImageFile, user.id);
+      if (imageUrl) {
+        updateData = { ...updateData, image_url: imageUrl, image_path: imageUrl };
       }
+    }
+
+    if (newAdditionalImageFiles && newAdditionalImageFiles.length > 0) {
+      const uploadedUrls = await uploadMultipleImages(newAdditionalImageFiles, user.id);
+      const existingAdditional = (updates.additional_images || []) as string[];
+      updateData.additional_images = [...existingAdditional, ...uploadedUrls].slice(0, 4);
     }
 
     const { error } = await supabase
@@ -240,15 +289,14 @@ export function useJourneyMutations() {
     return { error: error ? new Error(error.message) : null };
   };
 
-  // Delete journey
-  const deleteJourney = async (id: string, imagePath?: string | null) => {
-    if (!user) return { error: new Error('Not authenticated') };
-
+  const deleteJourney = async (id: string) => {
     setLoading(true);
+    const supabase = createClient();
 
-    // Delete image from storage if exists
-    if (imagePath) {
-      await supabase.storage.from(STORAGE_BUCKET).remove([imagePath]);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setLoading(false);
+      return { error: new Error('Not authenticated') };
     }
 
     const { error } = await supabase
@@ -261,17 +309,11 @@ export function useJourneyMutations() {
     return { error: error ? new Error(error.message) : null };
   };
 
-  // Like journey (increment likes_count)
   const likeJourney = async (id: string) => {
+    const supabase = createClient();
     const { error } = await supabase.rpc('increment_likes', { journey_id: id });
     return { error: error ? new Error(error.message) : null };
   };
 
-  return {
-    createJourney,
-    updateJourney,
-    deleteJourney,
-    likeJourney,
-    loading,
-  };
+  return { createJourney, updateJourney, deleteJourney, likeJourney, uploadImage, uploadMultipleImages, loading };
 }
