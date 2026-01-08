@@ -10,6 +10,9 @@ import { Analytics } from '@vercel/analytics/next';
 export const metadata: Metadata = {
   title: 'RoverNote - Your Travel Scrapbook',
   description: 'Create beautiful scrapbook-style travel journals, share your adventures, and get inspired by travelers from around the world.',
+  icons: {
+    icon: '/favicon.png',
+  },
 };
 
 export default function RootLayout({

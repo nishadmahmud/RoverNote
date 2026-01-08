@@ -10,7 +10,7 @@ export function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, profile, signOut } = useAuth();
-  
+
   const handleSignOut = async () => {
     await signOut();
     toast.success('See you soon! 👋');
@@ -32,25 +32,24 @@ export function Navigation() {
     <header className="bg-[var(--color-paper)] shadow-md sticky top-0 z-40 border-b-4 border-[var(--color-accent)]">
       {/* Decorative top border with scrapbook style */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-secondary)] to-[var(--color-accent)]"></div>
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 hover:scale-105 transition-transform group">
-            <div className="relative">
-              <div className="bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] p-2 rounded-lg shadow-md transform -rotate-3 group-hover:rotate-0 transition-transform">
-                <Plane className="text-white" size={20} />
+          {/* Left: Logo */}
+          <div className="flex-shrink-0">
+            <Link href="/" className="flex items-center gap-2 hover:scale-105 transition-transform group">
+              <div className="relative h-auto w-24">
+                <img
+                  src="/logo.png"
+                  alt="RoverNote"
+                  className="h-full w-full object-contain"
+                />
               </div>
-              {/* Decorative stamp effect */}
-              <div className="absolute inset-0 border-2 border-[var(--color-primary)] rounded-lg transform rotate-3 opacity-30"></div>
-            </div>
-            <div>
-              <span className="text-[var(--color-primary)] tracking-tight" style={{ fontFamily: 'Brush Script MT, cursive', fontSize: '1.5rem' }}>RoverNote</span>
-            </div>
-          </Link>
-          
-          {/* Navigation */}
-          <nav className="flex items-center gap-1">
+            </Link>
+          </div>
+
+          {/* Center: Navigation Links */}
+          <nav className="hidden md:flex flex-1 justify-center items-center gap-1">
             {visibleNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.path;
@@ -58,11 +57,10 @@ export function Navigation() {
                 <Link
                   key={item.path}
                   href={item.path}
-                  className={`relative flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 group ${
-                    isActive
+                  className={`relative flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 group ${isActive
                       ? 'text-[var(--color-primary)]'
                       : 'text-gray-600 hover:text-[var(--color-secondary)]'
-                  }`}
+                    }`}
                 >
                   {/* Active indicator - washi tape style */}
                   {isActive && (
@@ -71,10 +69,10 @@ export function Navigation() {
                       <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-[var(--color-primary)]"></div>
                     </>
                   )}
-                  
+
                   <Icon size={18} className="relative z-10" />
-                  <span className="hidden sm:inline relative z-10 text-sm">{item.label}</span>
-                  
+                  <span className="hidden lg:inline relative z-10 text-sm">{item.label}</span>
+
                   {/* Hover effect - sticker style */}
                   {!isActive && (
                     <div className="absolute inset-0 bg-[var(--color-secondary)]/0 group-hover:bg-[var(--color-secondary)]/10 rounded-lg transition-colors"></div>
@@ -82,8 +80,10 @@ export function Navigation() {
                 </Link>
               );
             })}
+          </nav>
 
-            {/* Auth Button */}
+          {/* Right: Auth Buttons */}
+          <div className="flex-shrink-0 flex items-center gap-2">
             {user ? (
               <div className="flex items-center gap-2 ml-2">
                 {/* User avatar/name */}
@@ -91,7 +91,7 @@ export function Navigation() {
                   <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] flex items-center justify-center text-white text-xs">
                     {profile?.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || '?'}
                   </div>
-                  <span className="text-sm text-gray-700" style={{ fontFamily: 'Kalam, cursive' }}>
+                  <span className="text-sm text-gray-700 font-sans font-medium">
                     {profile?.display_name || user.email?.split('@')[0] || 'User'}
                   </span>
                 </div>
@@ -114,10 +114,10 @@ export function Navigation() {
                 <span className="text-sm">Sign In</span>
               </Link>
             )}
-          </nav>
+          </div>
         </div>
       </div>
-      
+
       {/* Decorative bottom accents - doodle style */}
       <div className="absolute bottom-0 left-10 w-8 h-8 opacity-20">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
