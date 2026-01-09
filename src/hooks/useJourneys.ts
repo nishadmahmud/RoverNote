@@ -51,35 +51,37 @@ export function useCommunityJourneys() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const supabase = createClient();
-    
-    supabase
-      .from('journeys')
-      .select(`
-        id,
-        user_id,
-        title,
-        location,
-        country,
-        start_date,
-        end_date,
-        body,
-        image_url,
-        image_path,
-        additional_images,
-        tags,
-        is_public,
-        likes_count,
-        created_at,
-        updated_at,
-        profiles (
-          display_name,
-          avatar_url
-        )
-      `)
-      .eq('is_public', true)
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
+    const fetchJourneys = async () => {
+      try {
+        const supabase = createClient();
+        
+        const { data, error } = await supabase
+          .from('journeys')
+          .select(`
+            id,
+            user_id,
+            title,
+            location,
+            country,
+            start_date,
+            end_date,
+            body,
+            image_url,
+            image_path,
+            additional_images,
+            tags,
+            is_public,
+            likes_count,
+            created_at,
+            updated_at,
+            profiles (
+              display_name,
+              avatar_url
+            )
+          `)
+          .eq('is_public', true)
+          .order('created_at', { ascending: false });
+
         if (error) {
           console.error('Error fetching journeys:', error.message || error);
           setError(error.message || 'Failed to fetch journeys');
@@ -91,13 +93,15 @@ export function useCommunityJourneys() {
           })) as JourneyWithProfile[];
           setJourneys(transformed);
         }
-        setLoading(false);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error('Network error:', err);
         setError('Network error');
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    fetchJourneys();
   }, []);
 
   return { journeys, loading, error };
