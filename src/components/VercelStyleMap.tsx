@@ -571,13 +571,12 @@ export function VercelStyleMap({ journeys, onCountryClick, onMarkerClick }: Verc
               onMouseEnter={() => setHoveredMarker(marker)}
               onMouseLeave={() => setHoveredMarker(null)}
               onClick={() => onMarkerClick?.(marker)}
-              style={{ cursor: 'pointer' }}
             >
               {/* Pin shadow */}
               <ellipse cx="0" cy="6" rx="2" ry="1" fill="#000" opacity="0.2" />
               
               {/* Small pin */}
-              <g>
+              <g style={{ cursor: 'pointer' }}>
                 <path
                   d="M 0 -8 C -4 -8 -6 -5 -6 -2 C -6 2 0 6 0 6 C 0 6 6 2 6 -2 C 6 -5 4 -8 0 -8 Z"
                   fill="#FF6B6B"
