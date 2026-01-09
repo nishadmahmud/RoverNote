@@ -84,7 +84,12 @@ export function useCommunityJourneys() {
           console.error('Error fetching journeys:', error.message || error);
           setError(error.message || 'Failed to fetch journeys');
         } else {
-          setJourneys((data || []) as JourneyWithProfile[]);
+          // Transform profiles from array to single object (Supabase returns array for joins)
+          const transformed = (data || []).map((item: Record<string, unknown>) => ({
+            ...item,
+            profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles,
+          })) as JourneyWithProfile[];
+          setJourneys(transformed);
         }
         setLoading(false);
       })
