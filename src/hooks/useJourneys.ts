@@ -36,9 +36,17 @@ interface JourneyInsert {
   is_public?: boolean;
 }
 
-// Simple hook - just fetches public journeys
+// Extended journey type with profiles
+interface JourneyWithProfile extends Journey {
+  profiles?: {
+    display_name: string | null;
+    avatar_url: string | null;
+  } | null;
+}
+
+// Simple hook - just fetches public journeys with profiles
 export function useCommunityJourneys() {
-  const [journeys, setJourneys] = useState<Journey[]>([]);
+  const [journeys, setJourneys] = useState<JourneyWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,12 +55,42 @@ export function useCommunityJourneys() {
     
     supabase
       .from('journeys')
-      .select('*')
+      .select(`
+        id,
+        user_id,
+        title,
+        location,
+        country,
+        start_date,
+        end_date,
+        body,
+        image_url,
+        image_path,
+        additional_images,
+        tags,
+        is_public,
+        likes_count,
+        created_at,
+        updated_at,
+        profiles (
+          display_name,
+          avatar_url
+        )
+      `)
       .eq('is_public', true)
       .order('created_at', { ascending: false })
       .then(({ data, error }) => {
-        if (error) setError(error.message);
-        else setJourneys(data || []);
+        if (error) {
+          console.error('Error fetching journeys:', error.message || error);
+          setError(error.message || 'Failed to fetch journeys');
+        } else {
+          setJourneys((data || []) as JourneyWithProfile[]);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Network error:', err);
+        setError('Network error');
         setLoading(false);
       });
   }, []);
