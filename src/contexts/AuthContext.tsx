@@ -98,8 +98,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .select('*')
           .eq('id', newUser.id)
           .single()
-          .then(({ data }) => {
-            if (mounted && data) setProfile(data);
+          .then(async ({ data }) => {
+            if (mounted && data) {
+              // Use Google avatar if no profile avatar
+              const googleAvatar = newUser.user_metadata?.avatar_url || newUser.user_metadata?.picture;
+              if (!data.avatar_url && googleAvatar) {
+                data.avatar_url = googleAvatar;
+                // Update profile with Google avatar
+                await supabase.from('profiles').update({ avatar_url: googleAvatar }).eq('id', newUser.id);
+              }
+              setProfile(data);
+            }
           });
       }
     });

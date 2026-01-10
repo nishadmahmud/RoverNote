@@ -1,14 +1,34 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { Home, Users, BookOpen, User, Plane, Map, LogIn, LogOut } from 'lucide-react';
+import Image from 'next/image';
+import { usePathname } from 'next/navigation';
+import { Menu, X, Home, Users, BookOpen, User, Map, LogIn, LogOut } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+
+const navLinks = [
+  { href: '/', label: 'Home', icon: Home, requiresAuth: false },
+  { href: '/community', label: 'Community', icon: Users, requiresAuth: false },
+  { href: '/map', label: 'Map', icon: Map, requiresAuth: false },
+  { href: '/my-scrapbook', label: 'My Scrapbook', icon: BookOpen, requiresAuth: false },
+  { href: '/profile', label: 'Profile', icon: User, requiresAuth: true },
+];
+
+// Bottom nav links for logged-in mobile users
+const bottomNavLinks = [
+  { href: '/community', label: 'Community', icon: Users },
+  { href: '/map', label: 'Map', icon: Map },
+  { href: '/my-scrapbook', label: 'Scrapbook', icon: BookOpen },
+  { href: '/profile', label: 'Profile', icon: User },
+];
 
 export function Navigation() {
+  const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
-  const router = useRouter();
   const { user, profile, signOut } = useAuth();
 
   const handleSignOut = async () => {
@@ -17,118 +37,230 @@ export function Navigation() {
     window.location.href = '/';
   };
 
-  const navItems = [
-    { path: '/', icon: Home, label: 'Home', requiresAuth: false },
-    { path: '/community', icon: Users, label: 'Community', requiresAuth: false },
-    { path: '/map', icon: Map, label: 'Map', requiresAuth: false },
-    { path: '/my-scrapbook', icon: BookOpen, label: 'My Scrapbook', requiresAuth: true },
-    { path: '/profile', icon: User, label: 'Profile', requiresAuth: true }
-  ];
-
   // Filter nav items based on auth state
-  const visibleNavItems = navItems.filter(item => !item.requiresAuth || user);
+  const visibleNavItems = navLinks.filter(item => !item.requiresAuth || user);
 
   return (
-    <header className="bg-[var(--color-paper)] shadow-md sticky top-0 z-40 border-b-4 border-[var(--color-accent)]">
-      {/* Decorative top border with scrapbook style */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-secondary)] to-[var(--color-accent)]"></div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Left: Logo */}
-          <div className="flex-shrink-0">
-            <Link href="/" className="flex items-center gap-2 hover:scale-105 transition-transform group">
-              <div className="relative h-auto w-24">
-                <img
-                  src="/logo.png"
-                  alt="RoverNote"
-                  className="h-full w-full object-contain"
-                />
-              </div>
-            </Link>
+    <>
+    <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <nav className="container mx-auto px-4 h-16 flex items-center justify-between">
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2 group">
+          <div className="relative h-10 w-28">
+            <Image
+              src="/logo.png"
+              alt="RoverNote"
+              fill
+              className="object-contain transition-transform duration-300 group-hover:scale-105"
+              priority
+            />
           </div>
+        </Link>
 
-          {/* Center: Navigation Links */}
-          <nav className="hidden md:flex flex-1 justify-center items-center gap-1">
-            {visibleNavItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.path;
-              return (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  className={`relative flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 group ${isActive
-                      ? 'text-[var(--color-primary)]'
-                      : 'text-gray-600 hover:text-[var(--color-secondary)]'
-                    }`}
-                >
-                  {/* Active indicator - washi tape style */}
-                  {isActive && (
-                    <>
-                      <div className="absolute inset-0 bg-[var(--color-accent)]/30 rounded-lg transform -rotate-1"></div>
-                      <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-[var(--color-primary)]"></div>
-                    </>
-                  )}
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center gap-1">
+          {visibleNavItems.map((link) => {
+            const Icon = link.icon;
+            const isActive = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
+                  isActive
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {link.label}
+              </Link>
+            );
+          })}
+        </div>
 
-                  <Icon size={18} className="relative z-10" />
-                  <span className="hidden lg:inline relative z-10 text-sm">{item.label}</span>
-
-                  {/* Hover effect - sticker style */}
-                  {!isActive && (
-                    <div className="absolute inset-0 bg-[var(--color-secondary)]/0 group-hover:bg-[var(--color-secondary)]/10 rounded-lg transition-colors"></div>
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* Right: Auth Buttons */}
-          <div className="flex-shrink-0 flex items-center gap-2">
-            {user ? (
-              <div className="flex items-center gap-2 ml-2">
-                {/* User avatar/name */}
-                <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-[var(--color-secondary)]/10 rounded-full">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] flex items-center justify-center text-white text-xs">
+        {/* CTA Buttons - Desktop */}
+        <div className="hidden md:flex items-center gap-3">
+          {user ? (
+            <>
+              {/* User info */}
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full">
+                {profile?.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture ? (
+                  <img 
+                    src={profile?.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture} 
+                    alt="Avatar"
+                    className="w-6 h-6 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-xs font-medium">
                     {profile?.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || '?'}
                   </div>
-                  <span className="text-sm text-gray-700 font-sans font-medium">
-                    {profile?.display_name || user.email?.split('@')[0] || 'User'}
-                  </span>
-                </div>
-                {/* Logout button */}
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  className="flex items-center gap-1 px-3 py-2 text-gray-600 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 cursor-pointer"
-                >
-                  <LogOut size={18} />
-                  <span className="hidden sm:inline text-sm">Logout</span>
-                </button>
+                )}
+                <span className="text-sm font-medium text-foreground">
+                  {profile?.display_name || user.email?.split('@')[0] || 'User'}
+                </span>
               </div>
-            ) : (
-              <Link
-                href="/auth"
-                className="flex items-center gap-2 ml-2 px-4 py-2 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] text-white rounded-full shadow-md hover:shadow-lg hover:scale-105 transition-all"
+              {/* Logout button */}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleSignOut}
+                className="gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
               >
-                <LogIn size={18} />
-                <span className="text-sm">Sign In</span>
-              </Link>
-            )}
-          </div>
+                <LogOut className="h-4 w-4" />
+                Logout
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button asChild variant="ghost" size="sm" className="gap-2">
+                <Link href="/auth">
+                  <LogIn className="h-4 w-4" />
+                  Sign In
+                </Link>
+              </Button>
+              <Button asChild size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium">
+                <Link href="/auth">
+                  Start Free
+                </Link>
+              </Button>
+            </>
+          )}
         </div>
-      </div>
 
-      {/* Decorative bottom accents - doodle style */}
-      <div className="absolute bottom-0 left-10 w-8 h-8 opacity-20">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="var(--color-accent)" />
-        </svg>
-      </div>
-      <div className="absolute bottom-0 right-20 w-6 h-6 opacity-20">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="12" r="10" fill="var(--color-secondary)" />
-        </svg>
-      </div>
+        {/* Mobile Menu Button - Only show when NOT logged in */}
+        {!user && (
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="md:hidden p-2 rounded-lg hover:bg-muted/50 transition-colors"
+            aria-label="Toggle menu"
+          >
+            {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        )}
+
+        {/* Mobile Logout Button - Only show when logged in */}
+        {user && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleSignOut}
+            className="md:hidden gap-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="text-sm">Logout</span>
+          </Button>
+        )}
+      </nav>
+
+      {/* Mobile Navigation Overlay - Only for non-logged in users */}
+      {isOpen && !user && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="md:hidden fixed inset-0 top-16 bg-black/20 backdrop-blur-sm z-40"
+            onClick={() => setIsOpen(false)}
+          />
+          
+          {/* Menu Panel */}
+          <div className="md:hidden fixed top-16 left-0 right-0 bg-background border-b border-border shadow-lg z-50 animate-in slide-in-from-top-2 duration-200">
+            <div className="container mx-auto px-4 py-4 space-y-2 max-h-[calc(100vh-4rem)] overflow-y-auto">
+              {visibleNavItems.map((link) => {
+                const Icon = link.icon;
+                const isActive = pathname === link.href;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setIsOpen(false)}
+                    className={cn(
+                      'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all',
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                    {link.label}
+                  </Link>
+                );
+              })}
+              <div className="pt-4 space-y-2 border-t border-border/50">
+                <Button asChild variant="outline" className="w-full justify-center gap-2">
+                  <Link href="/auth" onClick={() => setIsOpen(false)}>
+                    <LogIn className="h-4 w-4" />
+                    Sign In
+                  </Link>
+                </Button>
+                <Button asChild className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+                  <Link href="/auth" onClick={() => setIsOpen(false)}>
+                    Start Free
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
     </header>
+
+    {/* Mobile Bottom Navigation - Only for logged in users */}
+    {user && (
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t border-border z-50 safe-area-pb">
+        <nav className="flex items-center justify-around h-16 px-2">
+          {bottomNavLinks.map((link) => {
+            const Icon = link.icon;
+            const isActive = pathname === link.href;
+            const isProfile = link.href === '/profile';
+            const avatarUrl = profile?.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture;
+            
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  'flex flex-col items-center justify-center gap-1 flex-1 h-full transition-all duration-200',
+                  isActive
+                    ? 'text-primary'
+                    : 'text-muted-foreground'
+                )}
+              >
+                <div className={cn(
+                  'p-1.5 rounded-xl transition-all duration-200',
+                  isActive && 'bg-primary/10'
+                )}>
+                  {isProfile && avatarUrl ? (
+                    <img 
+                      src={avatarUrl} 
+                      alt="Profile"
+                      className={cn(
+                        'h-5 w-5 rounded-full object-cover transition-transform',
+                        isActive && 'scale-110 ring-2 ring-primary'
+                      )}
+                    />
+                  ) : (
+                    <Icon className={cn(
+                      'h-5 w-5 transition-transform',
+                      isActive && 'scale-110'
+                    )} />
+                  )}
+                </div>
+                <span className={cn(
+                  'text-[10px] font-medium',
+                  isActive && 'font-semibold'
+                )}>
+                  {link.label}
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+    )}
+  </>
   );
 }
+
+export default Navigation;

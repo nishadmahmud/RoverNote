@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Navigation } from '@/components/Navigation';
 import { Footer } from '@/components/Footer';
+import { MobileBottomSpacer } from '@/components/MobileBottomSpacer';
 import { Toaster } from 'sonner';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { SpeedInsights } from "@vercel/speed-insights/next"
@@ -76,6 +77,7 @@ export default function RootLayout({
             <Analytics />
           </main>
           <Footer />
+          <MobileBottomSpacer />
           <Toaster position="top-center" richColors />
         </AuthProvider>
       </body>
