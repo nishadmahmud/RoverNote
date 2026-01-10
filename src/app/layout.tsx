@@ -17,11 +17,11 @@ export const metadata: Metadata = {
   authors: [{ name: 'RoverNote Team' }],
   creator: 'RoverNote',
   publisher: 'RoverNote',
-  metadataBase: new URL('https://rovernote.vercel.app'),
+  metadataBase: new URL('https://rovernote.live'),
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://rovernote.vercel.app',
+    url: 'https://rovernote.live',
     siteName: 'RoverNote',
     title: 'RoverNote - Your Travel Scrapbook',
     description: 'Create beautiful scrapbook-style travel journals, share your adventures, and get inspired by travelers from around the world.',
