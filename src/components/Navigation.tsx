@@ -46,15 +46,15 @@ export function Navigation() {
       <nav className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="relative h-10 w-28">
-            <Image
-              src="/logo.png"
-              alt="RoverNote"
-              fill
-              className="object-contain transition-transform duration-300 group-hover:scale-105"
-              priority
-            />
-          </div>
+          <Image
+            src="/logo.png"
+            alt="RoverNote"
+            width={112}
+            height={40}
+            className="h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+            priority
+            style={{ background: 'transparent' }}
+          />
         </Link>
 
         {/* Desktop Navigation */}
