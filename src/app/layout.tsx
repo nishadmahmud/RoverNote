@@ -19,6 +19,9 @@ export const metadata: Metadata = {
   creator: 'RoverNote',
   publisher: 'RoverNote',
   metadataBase: new URL('https://rovernote.live'),
+  alternates: {
+    canonical: '/',
+  },
   openGraph: {
     type: 'website',
     locale: 'en_US',
@@ -53,9 +56,14 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: '/favicon.png',
-    apple: '/favicon.png',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+    ],
+    apple: '/apple-touch-icon.png',
   },
+  manifest: '/site.webmanifest',
   verification: {
     google: 'D3DF0GGWxogw3G8cuqRFw31T_RAMi2gSLFmNsefMeVg',
   },

@@ -5,30 +5,31 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Use non-www canonical URL (no trailing slashes)
   const baseUrl = 'https://rovernote.live';
 
-  // Static routes
+  // Static routes - no trailing slashes
   const staticRoutes: MetadataRoute.Sitemap = [
     {
-      url: `${baseUrl}/`,
+      url: baseUrl,
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 1,
     },
     {
-      url: `${baseUrl}/community/`,
+      url: `${baseUrl}/community`,
       lastModified: new Date(),
       changeFrequency: 'hourly',
       priority: 0.9,
     },
     {
-      url: `${baseUrl}/map/`,
+      url: `${baseUrl}/map`,
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.8,
     },
     {
-      url: `${baseUrl}/auth/`,
+      url: `${baseUrl}/auth`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.5,
@@ -49,7 +50,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     if (journeys) {
       journeyRoutes = journeys.map((journey) => ({
-        url: `${baseUrl}/journey/${journey.id}/`,
+        url: `${baseUrl}/journey/${journey.id}`,
         lastModified: new Date(journey.updated_at),
         changeFrequency: 'weekly' as const,
         priority: 0.7,
