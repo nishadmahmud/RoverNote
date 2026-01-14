@@ -5,10 +5,10 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // Use non-www canonical URL (no trailing slashes)
-  const baseUrl = 'https://rovernote.live';
+  // Use www as canonical (matches Vercel config)
+  const baseUrl = 'https://www.rovernote.live';
 
-  // Static routes - no trailing slashes
+  // Static routes
   const staticRoutes: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
