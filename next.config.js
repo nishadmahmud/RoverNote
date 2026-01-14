@@ -24,24 +24,6 @@ const nextConfig = {
       },
     ],
   },
-  // Redirect www to non-www (canonical URL)
-  async redirects() {
-    return [
-      {
-        source: '/:path*',
-        has: [
-          {
-            type: 'host',
-            value: 'www.rovernote.live',
-          },
-        ],
-        destination: 'https://rovernote.live/:path*',
-        permanent: true, // 301 redirect for SEO
-      },
-    ];
-  },
-  // Remove trailing slashes for consistency
-  trailingSlash: false,
 };
 
 module.exports = nextConfig;

@@ -1,18 +1,4 @@
 {
   "buildCommand": "npm run build",
-  "framework": "nextjs",
-  "trailingSlash": false,
-  "redirects": [
-    {
-      "source": "/:path((?!api).*)",
-      "has": [
-        {
-          "type": "host",
-          "value": "www.rovernote.live"
-        }
-      ],
-      "destination": "https://rovernote.live/:path",
-      "permanent": true
-    }
-  ]
+  "framework": "nextjs"
 }
