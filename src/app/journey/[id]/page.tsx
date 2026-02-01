@@ -30,6 +30,7 @@ export default function JourneyDetailPage() {
   const [journey, setJourney] = useState<Journey | null>(null);
   const [loading, setLoading] = useState(true);
   const [authorName, setAuthorName] = useState('Anonymous Traveler');
+  const [authorAvatar, setAuthorAvatar] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchJourney = async () => {
@@ -47,15 +48,18 @@ export default function JourneyDetailPage() {
 
       setJourney(data);
 
-      // Fetch author name
+      // Fetch author name and avatar
       const { data: profile } = await supabase
         .from('profiles')
-        .select('display_name')
+        .select('display_name, avatar_url')
         .eq('id', data.user_id)
         .single();
 
       if (profile?.display_name) {
         setAuthorName(profile.display_name);
+      }
+      if (profile?.avatar_url) {
+        setAuthorAvatar(profile.avatar_url);
       }
 
       setLoading(false);
@@ -176,9 +180,17 @@ export default function JourneyDetailPage() {
 
             {/* Author info with doodle */}
             <div className="mb-6 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white shadow-md transform -rotate-3">
-                {authorName.charAt(0)}
-              </div>
+              {authorAvatar ? (
+                <img 
+                  src={authorAvatar} 
+                  alt={authorName}
+                  className="w-10 h-10 rounded-full object-cover shadow-md transform -rotate-3 border-2 border-white"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white shadow-md transform -rotate-3">
+                  {authorName.charAt(0)}
+                </div>
+              )}
               <span style={{ fontFamily: 'Kalam, cursive', fontSize: '1.1rem' }} className="text-gray-700">
                 by {authorName}
               </span>

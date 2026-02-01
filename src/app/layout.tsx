@@ -69,6 +69,62 @@ export const metadata: Metadata = {
   },
 };
 
+// Structured data for Google (helps with sitelinks)
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      '@id': 'https://www.rovernote.live/#website',
+      'url': 'https://www.rovernote.live',
+      'name': 'RoverNote',
+      'description': 'Create beautiful scrapbook-style travel journals',
+      'publisher': {
+        '@id': 'https://www.rovernote.live/#organization'
+      },
+    },
+    {
+      '@type': 'Organization',
+      '@id': 'https://www.rovernote.live/#organization',
+      'name': 'RoverNote',
+      'url': 'https://www.rovernote.live',
+      'logo': {
+        '@type': 'ImageObject',
+        'url': 'https://www.rovernote.live/logo.png',
+      },
+      'sameAs': []
+    },
+    {
+      '@type': 'WebPage',
+      '@id': 'https://www.rovernote.live/#webpage',
+      'url': 'https://www.rovernote.live',
+      'name': 'RoverNote - Your Travel Scrapbook',
+      'isPartOf': {
+        '@id': 'https://www.rovernote.live/#website'
+      },
+      'about': {
+        '@id': 'https://www.rovernote.live/#organization'
+      },
+      'description': 'Create beautiful scrapbook-style travel journals, share your adventures, and get inspired by travelers from around the world.'
+    },
+    {
+      '@type': 'SiteNavigationElement',
+      'name': 'Community',
+      'url': 'https://www.rovernote.live/community'
+    },
+    {
+      '@type': 'SiteNavigationElement',
+      'name': 'Map',
+      'url': 'https://www.rovernote.live/map'
+    },
+    {
+      '@type': 'SiteNavigationElement',
+      'name': 'My Scrapbook',
+      'url': 'https://www.rovernote.live/my-scrapbook'
+    }
+  ]
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -76,6 +132,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body>
         <AuthProvider>
           <Navigation />

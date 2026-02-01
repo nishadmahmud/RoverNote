@@ -4,17 +4,41 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Plus, Plane, Loader2, BookOpen, Sparkles, MapPin, Camera } from 'lucide-react';
 import { TravelEntry } from '@/components/TravelEntry';
-import { AddEntryModal } from '@/components/AddEntryModal';
+import { AddEntryModal, EntryData } from '@/components/AddEntryModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyJourneys, useJourneyMutations } from '@/hooks/useJourneys';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+interface EditableJourney {
+  id: string;
+  location: string;
+  country: string;
+  date: string;
+  notes: string;
+  mustDos: string[];
+  isPublic: boolean;
+  imageUrl?: string;
+  additionalImageUrls?: string[];
+}
 
 export default function MyScrapbookPage() {
   const { user, loading: authLoading } = useAuth();
   const { journeys, loading, refetch } = useMyJourneys(user?.id);
-  const { createJourney, loading: mutationLoading } = useJourneyMutations();
+  const { createJourney, updateJourney, deleteJourney, loading: mutationLoading } = useJourneyMutations();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingJourney, setEditingJourney] = useState<EditableJourney | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '';
@@ -22,18 +46,12 @@ export default function MyScrapbookPage() {
     return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   };
 
-  const handleAddEntry = async (data: {
-    title: string;
-    location: string;
-    country: string;
-    date: string;
-    notes: string;
-    mustDos: string[];
-    isPublic: boolean;
-    mainImageFile?: File;
-    additionalImageFiles?: File[];
-    imageUrl?: string;
-  }) => {
+  const formatDateForInput = (dateStr: string | null) => {
+    if (!dateStr) return '';
+    return dateStr.split('T')[0]; // Format as YYYY-MM-DD for date input
+  };
+
+  const handleAddEntry = async (data: EntryData) => {
     const { error } = await createJourney({
       title: data.title,
       location: data.location,
@@ -48,9 +66,87 @@ export default function MyScrapbookPage() {
     if (error) {
       toast.error('Failed to create entry: ' + error.message);
     } else {
-      toast.success('Entry created! 🎉');
+      // Close modal first
       setIsModalOpen(false);
+      // Then refetch to update the list
       refetch();
+      toast.success('Entry created! 🎉');
+    }
+  };
+
+  const handleEditEntry = async (data: EntryData) => {
+    if (!data.id) return;
+    
+    const { error } = await updateJourney(
+      data.id,
+      {
+        title: data.title,
+        location: data.location,
+        country: data.country,
+        start_date: data.date,
+        body: data.notes,
+        tags: data.mustDos,
+        is_public: data.isPublic,
+        image_url: data.imageUrl,
+        additional_images: data.additionalImageUrls || [],
+      },
+      data.mainImageFile,
+      data.additionalImageFiles
+    );
+
+    if (error) {
+      toast.error('Failed to update entry: ' + error.message);
+    } else {
+      // Close modal and clear state first
+      setEditingJourney(null);
+      setIsModalOpen(false);
+      // Then refetch to update the list
+      refetch();
+      toast.success('Entry updated! ✨');
+    }
+  };
+
+  const handleDeleteEntry = async () => {
+    if (!deleteConfirmId) return;
+    
+    const { error } = await deleteJourney(deleteConfirmId);
+
+    if (error) {
+      toast.error('Failed to delete entry: ' + error.message);
+    } else {
+      // Clear state first
+      setDeleteConfirmId(null);
+      // Then refetch to update the list
+      refetch();
+      toast.success('Entry deleted');
+    }
+  };
+
+  const openEditModal = (journey: typeof journeys[0]) => {
+    setEditingJourney({
+      id: journey.id,
+      location: journey.location || '',
+      country: journey.country || '',
+      date: formatDateForInput(journey.start_date),
+      notes: journey.body || '',
+      mustDos: journey.tags || [],
+      isPublic: journey.is_public,
+      imageUrl: journey.image_url || undefined,
+      additionalImageUrls: journey.additional_images || [],
+    });
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingJourney(null);
+  };
+
+  const handleModalSubmit = async (data: EntryData) => {
+    if (editingJourney) {
+      await handleEditEntry(data);
+    } else {
+      await handleAddEntry(data);
     }
   };
 
@@ -158,7 +254,9 @@ export default function MyScrapbookPage() {
     mustDos: j.tags || [],
     author: 'You',
     likes: j.likes_count || 0,
-    rotation: (index % 2 ? -1 : 1) * (Math.random() * 2)
+    rotation: (index % 2 ? -1 : 1) * (Math.random() * 2),
+    isOwner: true,
+    journeyData: j, // Keep reference to original data for editing
   }));
 
   return (
@@ -174,7 +272,7 @@ export default function MyScrapbookPage() {
         <div className="mb-8 text-center">
           <button
             onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] text-white rounded-full shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-full shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
             style={{ fontFamily: 'Permanent Marker, cursive' }}
           >
             <Plus size={20} />
@@ -189,7 +287,22 @@ export default function MyScrapbookPage() {
         ) : displayEntries.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-12">
             {displayEntries.map((entry) => (
-              <TravelEntry key={entry.id} {...entry} />
+              <TravelEntry 
+                key={entry.id} 
+                id={entry.id}
+                location={entry.location}
+                country={entry.country}
+                date={entry.date}
+                image={entry.image}
+                notes={entry.notes}
+                mustDos={entry.mustDos}
+                author={entry.author}
+                likes={entry.likes}
+                rotation={entry.rotation}
+                isOwner={entry.isOwner}
+                onEdit={() => openEditModal(entry.journeyData)}
+                onDelete={() => setDeleteConfirmId(entry.id)}
+              />
             ))}
           </div>
         ) : (
@@ -204,7 +317,8 @@ export default function MyScrapbookPage() {
               </p>
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="inline-flex items-center gap-2 bg-[var(--color-primary)] text-white px-8 py-4 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+                className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+                style={{ fontFamily: 'Permanent Marker, cursive' }}
               >
                 <Plus size={20} />
                 <span>Create First Entry</span>
@@ -216,10 +330,32 @@ export default function MyScrapbookPage() {
 
       <AddEntryModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onAdd={handleAddEntry}
+        onClose={closeModal}
+        onAdd={handleModalSubmit}
         loading={mutationLoading}
+        editData={editingJourney}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this journal entry?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete your journal entry and all associated photos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteEntry}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

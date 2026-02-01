@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 
 interface Journey {
@@ -112,6 +112,26 @@ export function useMyJourneys(userId: string | undefined) {
   const [journeys, setJourneys] = useState<Journey[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const fetchJourneys = useCallback(async (uid: string) => {
+    setLoading(true);
+    const supabase = createClient();
+    
+    const { data, error: fetchError } = await supabase
+      .from('journeys')
+      .select('*')
+      .eq('user_id', uid)
+      .order('created_at', { ascending: false });
+    
+    if (fetchError) {
+      setError(fetchError.message);
+    } else {
+      setJourneys(data || []);
+      setError(null);
+    }
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
     if (!userId) {
@@ -120,38 +140,13 @@ export function useMyJourneys(userId: string | undefined) {
       return;
     }
 
-    setLoading(true);
-    const supabase = createClient();
-    
-    supabase
-      .from('journeys')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) setError(error.message);
-        else setJourneys(data || []);
-        setLoading(false);
-      });
-  }, [userId]);
+    fetchJourneys(userId);
+  }, [userId, refreshKey, fetchJourneys]);
 
-  const refetch = () => {
-    if (!userId) return;
-    
-    setLoading(true);
-    const supabase = createClient();
-    
-    supabase
-      .from('journeys')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) setError(error.message);
-        else setJourneys(data || []);
-        setLoading(false);
-      });
-  };
+  const refetch = useCallback(() => {
+    // Trigger a re-fetch by incrementing the refresh key
+    setRefreshKey(prev => prev + 1);
+  }, []);
 
   return { journeys, loading, error, refetch };
 }

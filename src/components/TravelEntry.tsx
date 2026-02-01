@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { MapPin, Heart, Calendar } from 'lucide-react';
+import { MapPin, Heart, Calendar, Edit2, Trash2 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 
 interface TravelEntryProps {
@@ -13,6 +13,9 @@ interface TravelEntryProps {
   author: string;
   likes: number;
   rotation?: number;
+  isOwner?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 export function TravelEntry({
@@ -25,8 +28,23 @@ export function TravelEntry({
   mustDos,
   author,
   likes,
-  rotation = 0
+  rotation = 0,
+  isOwner = false,
+  onEdit,
+  onDelete,
 }: TravelEntryProps) {
+  const handleEdit = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onEdit?.();
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onDelete?.();
+  };
+
   return (
     <Link 
       href={`/journey/${id}`}
@@ -36,6 +54,25 @@ export function TravelEntry({
         transition: 'transform 0.3s ease, box-shadow 0.3s ease'
       }}
     >
+      {/* Edit/Delete buttons for owner */}
+      {isOwner && (
+        <div className="absolute top-2 right-2 z-10 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={handleEdit}
+            className="p-2 bg-white/90 hover:bg-blue-100 rounded-full shadow-md transition-colors"
+            title="Edit entry"
+          >
+            <Edit2 size={16} className="text-blue-600" />
+          </button>
+          <button
+            onClick={handleDelete}
+            className="p-2 bg-white/90 hover:bg-red-100 rounded-full shadow-md transition-colors"
+            title="Delete entry"
+          >
+            <Trash2 size={16} className="text-red-600" />
+          </button>
+        </div>
+      )}
       {/* Decorative tape */}
       <div className="absolute -top-3 left-1/4 w-20 h-6 bg-amber-100 opacity-60 rotate-[-5deg] shadow-sm"></div>
       <div className="absolute -top-3 right-1/4 w-20 h-6 bg-amber-100 opacity-60 rotate-[5deg] shadow-sm"></div>

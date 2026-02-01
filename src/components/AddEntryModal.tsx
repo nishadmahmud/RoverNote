@@ -1,25 +1,39 @@
 'use client';
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { X, Plus, Trash2, Upload, Loader2, ImagePlus } from "lucide-react";
+
+export interface EntryData {
+  id?: string;
+  title: string;
+  location: string;
+  country: string;
+  date: string;
+  notes: string;
+  mustDos: string[];
+  isPublic: boolean;
+  mainImageFile?: File;
+  additionalImageFiles?: File[];
+  imageUrl?: string;
+  additionalImageUrls?: string[];
+}
 
 interface AddEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (entry: {
-    title: string;
+  onAdd: (entry: EntryData) => void;
+  loading?: boolean;
+  editData?: {
+    id: string;
     location: string;
     country: string;
     date: string;
     notes: string;
     mustDos: string[];
     isPublic: boolean;
-    mainImageFile?: File;
-    additionalImageFiles?: File[];
     imageUrl?: string;
     additionalImageUrls?: string[];
-  }) => void;
-  loading?: boolean;
+  } | null;
 }
 
 export function AddEntryModal({
@@ -27,6 +41,7 @@ export function AddEntryModal({
   onClose,
   onAdd,
   loading = false,
+  editData = null,
 }: AddEntryModalProps) {
   const [location, setLocation] = useState("");
   const [country, setCountry] = useState("");
@@ -40,6 +55,7 @@ export function AddEntryModal({
   
   // Additional images (up to 4)
   const [additionalImages, setAdditionalImages] = useState<{file: File; preview: string}[]>([]);
+  const [existingAdditionalUrls, setExistingAdditionalUrls] = useState<string[]>([]);
   
   const [notes, setNotes] = useState("");
   const [mustDos, setMustDos] = useState<string[]>([""]);
@@ -47,6 +63,39 @@ export function AddEntryModal({
   
   const mainFileInputRef = useRef<HTMLInputElement>(null);
   const additionalFileInputRef = useRef<HTMLInputElement>(null);
+
+  const isEditMode = !!editData;
+
+  // Populate form when editData changes
+  useEffect(() => {
+    if (editData && isOpen) {
+      setLocation(editData.location || "");
+      setCountry(editData.country || "");
+      setDate(editData.date || "");
+      setNotes(editData.notes || "");
+      setMustDos(editData.mustDos.length > 0 ? editData.mustDos : [""]);
+      setIsPublic(editData.isPublic);
+      setMainImageUrl(editData.imageUrl || "");
+      setMainImagePreview("");
+      setMainImageFile(null);
+      setAdditionalImages([]);
+      setExistingAdditionalUrls(editData.additionalImageUrls || []);
+    } else if (!editData && isOpen) {
+      // Reset form for new entry
+      setLocation("");
+      setCountry("");
+      setDate("");
+      setAuthorName("");
+      setNotes("");
+      setMustDos([""]);
+      setIsPublic(true);
+      setMainImageUrl("");
+      setMainImagePreview("");
+      setMainImageFile(null);
+      setAdditionalImages([]);
+      setExistingAdditionalUrls([]);
+    }
+  }, [editData, isOpen]);
 
   const handleMainFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -95,11 +144,16 @@ export function AddEntryModal({
     setMustDos(newMustDos);
   };
 
+  const removeExistingAdditionalUrl = (index: number) => {
+    setExistingAdditionalUrls(existingAdditionalUrls.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const filteredMustDos = mustDos.filter((item) => item.trim() !== "");
     
     onAdd({
+      id: editData?.id,
       title: location,
       location,
       country,
@@ -110,6 +164,7 @@ export function AddEntryModal({
       mainImageFile: mainImageFile || undefined,
       additionalImageFiles: additionalImages.map(img => img.file),
       imageUrl: mainImageUrl || undefined,
+      additionalImageUrls: existingAdditionalUrls,
     });
 
     // Cleanup previews
@@ -125,6 +180,7 @@ export function AddEntryModal({
     setMainImageFile(null);
     setMainImagePreview("");
     setAdditionalImages([]);
+    setExistingAdditionalUrls([]);
     setNotes("");
     setMustDos([""]);
     setIsPublic(true);
@@ -183,7 +239,7 @@ export function AddEntryModal({
                     {date || 'Date'}
                   </text>
                   <text x="35" y="60" textAnchor="middle" fill="#8b5cf6" fontSize="7" fontFamily="Permanent Marker" opacity="0.8">
-                    ★ NEW ENTRY ★
+                    ★ {isEditMode ? 'EDITING' : 'NEW ENTRY'} ★
                   </text>
                 </svg>
               </div>
@@ -199,7 +255,7 @@ export function AddEntryModal({
               <div className="mb-6 pr-16">
                 <h2 style={{ fontFamily: 'Caveat, cursive', fontSize: '2.5rem', lineHeight: '1' }} 
                     className="text-gray-800 mb-1">
-                  My Travel Story ✈
+                  {isEditMode ? 'Edit My Story ✏️' : 'My Travel Story ✈'}
                 </h2>
                 <svg className="w-40 h-3" viewBox="0 0 160 8">
                   <path d="M 5 4 Q 40 7, 80 4 T 155 4" stroke="#f59e0b" strokeWidth="2" fill="none" strokeLinecap="round"/>
@@ -302,12 +358,32 @@ export function AddEntryModal({
               <div className="mb-4">
                 <label style={{ fontFamily: 'Permanent Marker, cursive', fontSize: '0.8rem' }} 
                        className="block mb-2 text-[var(--color-secondary)]">
-                  🖼️ Additional Photos ({additionalImages.length}/4)
+                  🖼️ Additional Photos ({existingAdditionalUrls.length + additionalImages.length}/4)
                 </label>
                 <div className="flex flex-wrap gap-3">
-                  {additionalImages.map((img, index) => (
-                    <div key={index} className="relative transform hover:scale-105 transition-transform"
+                  {/* Show existing additional images (from edit mode) */}
+                  {existingAdditionalUrls.map((url, index) => (
+                    <div key={`existing-${index}`} className="relative transform hover:scale-105 transition-transform"
                          style={{ transform: `rotate(${index % 2 === 0 ? '-' : ''}${2 + index}deg)` }}>
+                      <div className="bg-white p-2 pb-6 shadow-lg">
+                        <img src={url} alt={`Existing ${index + 1}`} className="w-20 h-20 object-cover" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeExistingAdditionalUrl(index)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600"
+                      >
+                        <X size={12} />
+                      </button>
+                      {/* Washi tape */}
+                      <div className="absolute -bottom-1 left-0 right-0 h-3 bg-blue-300 opacity-50"></div>
+                    </div>
+                  ))}
+                  
+                  {/* Show newly added images */}
+                  {additionalImages.map((img, index) => (
+                    <div key={`new-${index}`} className="relative transform hover:scale-105 transition-transform"
+                         style={{ transform: `rotate(${(existingAdditionalUrls.length + index) % 2 === 0 ? '-' : ''}${2 + index}deg)` }}>
                       <div className="bg-white p-2 pb-6 shadow-lg">
                         <img src={img.preview} alt={`Extra ${index + 1}`} className="w-20 h-20 object-cover" />
                       </div>
@@ -323,7 +399,7 @@ export function AddEntryModal({
                     </div>
                   ))}
                   
-                  {additionalImages.length < 4 && (
+                  {(existingAdditionalUrls.length + additionalImages.length) < 4 && (
                     <div 
                       onClick={() => additionalFileInputRef.current?.click()}
                       className="w-24 h-28 bg-white p-2 pb-6 shadow-lg cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-gray-300 hover:border-[var(--color-secondary)] transition-colors transform rotate-1"
@@ -348,7 +424,7 @@ export function AddEntryModal({
               {/* Decorative ticket */}
               <div className="inline-block bg-orange-100 border-2 border-dashed border-orange-400 px-3 py-1 transform rotate-1 shadow-sm">
                 <p style={{ fontFamily: 'Permanent Marker, cursive', fontSize: '0.7rem' }} className="text-orange-800">
-                  ✈ {additionalImages.length + (displayMainImage ? 1 : 0)}/5 PHOTOS
+                  {isEditMode ? '✏️' : '✈'} {existingAdditionalUrls.length + additionalImages.length + (displayMainImage ? 1 : 0)}/5 PHOTOS
                 </p>
               </div>
             </div>
@@ -462,7 +538,7 @@ export function AddEntryModal({
               <div className="flex gap-2 justify-end">
                 <div className="w-12 h-12 border-2 border-red-500 rounded-full flex items-center justify-center transform rotate-12">
                   <span style={{ fontFamily: 'Permanent Marker, cursive', fontSize: '0.5rem' }} className="text-red-500 text-center">
-                    NEW!
+                    {isEditMode ? 'EDIT' : 'NEW!'}
                   </span>
                 </div>
                 <div className="w-12 h-12 border-2 border-green-500 transform -rotate-6 flex items-center justify-center">
@@ -481,12 +557,14 @@ export function AddEntryModal({
               <span style={{ fontFamily: 'Permanent Marker, cursive' }}>Cancel</span>
             </button>
             <button type="submit" disabled={loading || !location || !country}
-              className="bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] text-white px-8 py-3 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all transform rotate-1 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+              className="bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all transform rotate-1 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <>
-                  <span style={{ fontFamily: 'Permanent Marker, cursive' }}>✈ Add to Journal!</span>
+                  <span style={{ fontFamily: 'Permanent Marker, cursive' }}>
+                    {isEditMode ? '✏️ Save Changes!' : '✈ Add to Journal!'}
+                  </span>
                 </>
               )}
             </button>
