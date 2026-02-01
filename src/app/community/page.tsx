@@ -18,7 +18,7 @@ export default function CommunityPage() {
 
   const filteredEntries = useMemo(() => {
     if (!searchQuery.trim()) return journeys;
-    
+
     const query = searchQuery.toLowerCase();
     return journeys.filter(entry =>
       entry.location?.toLowerCase().includes(query) ||
@@ -34,12 +34,18 @@ export default function CommunityPage() {
     image: j.image_url || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800',
     notes: j.body || '',
     mustDos: j.tags || [],
-    author: 'Anonymous Traveler',
+    author: j.profiles?.display_name || 'Anonymous Traveler',
     likes: j.likes_count || 0,
     rotation: (index % 2 ? -1 : 1) * (Math.random() * 2)
   }));
 
-  const uniqueCountries = new Set(journeys.map(j => j.country).filter(Boolean));
+  // Normalize country counting
+  const uniqueCountries = new Set(
+    journeys
+      .map(j => j.country)
+      .filter(Boolean)
+      .map(c => c!.trim().toLowerCase())
+  );
   const totalLikes = journeys.reduce((sum, j) => sum + (j.likes_count || 0), 0);
 
   if (error) {

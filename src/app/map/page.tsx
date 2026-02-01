@@ -31,7 +31,7 @@ export default function MapPage() {
   const { user } = useAuth();
   const { journeys: communityJourneys, loading: communityLoading } = useCommunityJourneys();
   const { journeys: myJourneys, loading: myLoading } = useMyJourneys(user?.id);
-  
+
   const [mapView, setMapView] = useState<MapView>('community');
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [countryJourneys, setCountryJourneys] = useState<Journey[]>([]);
@@ -40,7 +40,23 @@ export default function MapPage() {
   const journeys = mapView === 'community' ? communityJourneys : myJourneys;
   const loading = mapView === 'community' ? communityLoading : myLoading;
 
-  const uniqueCountries = [...new Set(journeys.map(j => j.country).filter(Boolean))];
+  // Normalize country name helper
+  const normalizeCountry = (country: string | null) => {
+    if (!country) return '';
+    return country.trim().toLowerCase();
+  };
+
+  // Get unique countries with proper capitalization (using the first occurrence as the label)
+  const uniqueCountries = [...new Set(
+    journeys
+      .map(j => j.country)
+      .filter(Boolean)
+      .map(c => normalizeCountry(c))
+  )].map(normalized => {
+    // Find the original capitalized version for display (prefer one that isn't all lowercase if possible)
+    const original = journeys.find(j => normalizeCountry(j.country) === normalized)?.country;
+    return original || normalized;
+  }).filter(Boolean);
 
   const handleCountryClick = (country: string, journeysInCountry: Journey[]) => {
     setSelectedCountry(country);
@@ -99,12 +115,12 @@ export default function MapPage() {
               <span>Interactive World Map</span>
               <Sparkles size={16} />
             </div>
-            
+
             <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-3">
               Explore the World
             </h1>
             <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-              Discover destinations visited by our community of travelers. 
+              Discover destinations visited by our community of travelers.
               Click on countries and markers to explore their stories ✈️
             </p>
           </div>
@@ -210,13 +226,13 @@ export default function MapPage() {
             {selectedCountry && countryJourneys.length > 0 && (
               <div className="mt-8 bg-card rounded-2xl border border-border shadow-xl p-6 animate-in fade-in slide-in-from-bottom-4 duration-300 relative overflow-hidden">
                 {/* Decorative washi tape */}
-                <div 
+                <div
                   className="absolute -top-2 left-10 w-24 h-5 opacity-70 transform -rotate-2"
                   style={{
                     background: 'linear-gradient(90deg, transparent 0%, hsl(var(--tape-amber)) 8%, hsl(var(--tape-amber)) 92%, transparent 100%)',
                   }}
                 />
-                
+
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">📍</span>
@@ -255,7 +271,7 @@ export default function MapPage() {
                           />
                         </div>
                       </div>
-                      
+
                       <div className="p-4">
                         <h4 className="text-foreground font-semibold truncate">
                           {journey.location || journey.title}
@@ -288,11 +304,13 @@ export default function MapPage() {
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {uniqueCountries.map((country, index) => {
-                    const countryCount = journeys.filter(j => j.country === country).length;
+                    // Filter case-insensitive and trim
+                    const countryCount = journeys.filter(j => normalizeCountry(j.country) === normalizeCountry(country)).length;
                     return (
                       <button
                         key={index}
-                        onClick={() => handleCountryClick(country!, journeys.filter(j => j.country === country))}
+                        // Pass filtered list (using normalized check)
+                        onClick={() => handleCountryClick(country!, journeys.filter(j => normalizeCountry(j.country) === normalizeCountry(country)))}
                         className="group px-4 py-2 bg-background rounded-full border border-border text-foreground hover:border-primary hover:text-primary transition-all text-sm flex items-center gap-2 shadow-sm hover:shadow-md"
                       >
                         <span>{country}</span>
