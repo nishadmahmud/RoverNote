@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, memo } from 'react';
+import { useState, useMemo, useCallback, memo, useEffect } from 'react';
 import {
   ComposableMap,
   Geographies,
@@ -9,6 +9,7 @@ import {
   ZoomableGroup,
 } from 'react-simple-maps';
 import { ZoomIn, ZoomOut, Maximize2, MapPin, Globe2, Heart, Plane } from 'lucide-react';
+import { geocodeLocation, getCachedCoordinates, setCachedCoordinates } from '@/utils/geocoding';
 
 // TopoJSON URL - Natural Earth 110m (lightweight, all countries)
 const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
@@ -68,11 +69,30 @@ const cityCoordinates: Record<string, [number, number]> = {
   'shanghai': [121.4737, 31.2304],
   'mumbai': [72.8777, 19.0760],
   'delhi': [77.1025, 28.7041],
+  'new delhi': [77.2090, 28.6139],
   'dubai': [55.2708, 25.2048],
   'bali': [115.0920, -8.3405],
   'hanoi': [105.8342, 21.0278],
   'ho chi minh': [106.6297, 10.8231],
   'kuala lumpur': [101.6869, 3.1390],
+  // Bangladesh
+  'dhaka': [90.4125, 23.8103],
+  'chittagong': [91.8325, 22.3569],
+  'cox\'s bazar': [91.9847, 21.4272],
+  'coxs bazar': [91.9847, 21.4272],
+  'sylhet': [91.8687, 24.8949],
+  'rajshahi': [88.6042, 24.3745],
+  'khulna': [89.5403, 22.8456],
+  // Pakistan
+  'karachi': [67.0011, 24.8607],
+  'lahore': [74.3587, 31.5204],
+  'islamabad': [73.0479, 33.6844],
+  // Sri Lanka
+  'colombo': [79.8612, 6.9271],
+  'kandy': [80.6337, 7.2906],
+  // Nepal
+  'kathmandu': [85.3240, 27.7172],
+  'pokhara': [83.9856, 28.2096],
   
   // Europe
   'paris': [2.3522, 48.8566],
@@ -138,16 +158,29 @@ const cityCoordinates: Record<string, [number, number]> = {
 
 // Country center coordinates for markers when city not found
 const countryCoordinates: Record<string, [number, number]> = {
+  // Asia
   'japan': [138.2529, 36.2048],
   'thailand': [100.9925, 15.8700],
   'singapore': [103.8198, 1.3521],
   'south korea': [127.7669, 35.9078],
   'china': [104.1954, 35.8617],
   'india': [78.9629, 20.5937],
+  'bangladesh': [90.3563, 23.6850],
+  'pakistan': [69.3451, 30.3753],
+  'sri lanka': [80.7718, 7.8731],
+  'nepal': [84.1240, 28.3949],
+  'bhutan': [90.4336, 27.5142],
+  'myanmar': [95.9560, 21.9162],
+  'cambodia': [104.9910, 12.5657],
+  'laos': [102.4955, 19.8563],
   'vietnam': [108.2772, 14.0583],
   'indonesia': [113.9213, -0.7893],
   'malaysia': [101.9758, 4.2105],
   'philippines': [121.7740, 12.8797],
+  'taiwan': [120.9605, 23.6978],
+  'mongolia': [103.8467, 46.8625],
+  
+  // Europe
   'france': [2.2137, 46.2276],
   'italy': [12.5674, 41.8719],
   'spain': [-3.7492, 40.4637],
@@ -159,21 +192,64 @@ const countryCoordinates: Record<string, [number, number]> = {
   'switzerland': [8.2275, 46.8182],
   'austria': [14.5501, 47.5162],
   'turkey': [35.2433, 38.9637],
+  'poland': [19.1451, 51.9194],
+  'sweden': [18.6435, 60.1282],
+  'norway': [8.4689, 60.4720],
+  'denmark': [9.5018, 56.2639],
+  'finland': [25.7482, 61.9241],
+  'belgium': [4.4699, 50.5039],
+  'ireland': [-8.2439, 53.4129],
+  'croatia': [15.2000, 45.1000],
+  'czech republic': [15.4729, 49.8175],
+  'czechia': [15.4729, 49.8175],
+  'hungary': [19.5033, 47.1625],
+  'romania': [24.9668, 45.9432],
+  'russia': [105.3188, 61.5240],
+  
+  // Americas
   'united states': [-95.7129, 37.0902],
+  'usa': [-95.7129, 37.0902],
   'canada': [-106.3468, 56.1304],
   'mexico': [-102.5528, 23.6345],
   'brazil': [-51.9253, -14.2350],
   'argentina': [-63.6167, -38.4161],
+  'chile': [-71.5430, -35.6751],
+  'peru': [-75.0152, -9.1900],
+  'colombia': [-74.2973, 4.5709],
+  'costa rica': [-83.7534, 9.7489],
+  'cuba': [-77.7812, 21.5218],
+  
+  // Oceania
   'australia': [133.7751, -25.2744],
   'new zealand': [174.8860, -40.9006],
+  'fiji': [179.4144, -16.5782],
+  
+  // Africa
   'egypt': [30.8025, 26.8206],
   'south africa': [22.9375, -30.5595],
   'morocco': [-7.0926, 31.7917],
+  'kenya': [37.9062, -0.0236],
+  'tanzania': [34.8888, -6.3690],
+  'nigeria': [8.6753, 9.0820],
+  'ghana': [-1.0232, 7.9465],
+  'ethiopia': [40.4897, 9.1450],
+  
+  // Middle East
   'uae': [53.8478, 23.4241],
   'united arab emirates': [53.8478, 23.4241],
+  'saudi arabia': [45.0792, 23.8859],
+  'qatar': [51.1839, 25.3548],
+  'israel': [34.8516, 31.0461],
+  'jordan': [36.2384, 30.5852],
+  'oman': [55.9754, 21.4735],
+  'kuwait': [47.4818, 29.3117],
+  'bahrain': [50.5577, 26.0667],
+  'iran': [53.6880, 32.4279],
+  'iraq': [43.6793, 33.2232],
+  'lebanon': [35.8623, 33.8547],
 };
 
-function getCoordinates(location: string | null, country: string | null): [number, number] | null {
+function getCoordinatesFromLookup(location: string | null, country: string | null): [number, number] | null {
   if (!location && !country) return null;
   
   // Try location first
@@ -306,6 +382,7 @@ export function VercelStyleMap({ journeys, onCountryClick, onMarkerClick }: Verc
   });
   const [hoveredCountry, setHoveredCountry] = useState<{ name: string; count: number; journeys: Journey[] } | null>(null);
   const [hoveredMarker, setHoveredMarker] = useState<Journey | null>(null);
+  const [geocodedCoords, setGeocodedCoords] = useState<Map<string, [number, number]>>(new Map());
 
   // Calculate visited countries and journey counts
   const { visitedCountries, countryJourneyMap } = useMemo(() => {
@@ -325,15 +402,81 @@ export function VercelStyleMap({ journeys, onCountryClick, onMarkerClick }: Verc
     };
   }, [journeys]);
 
-  // Get markers with coordinates
-  const markers = useMemo(() => {
-    return journeys
-      .map(journey => {
-        const coords = getCoordinates(journey.location, journey.country);
-        return coords ? { ...journey, coordinates: coords } : null;
-      })
-      .filter((m): m is Journey & { coordinates: [number, number] } => m !== null);
-  }, [journeys]);
+  // Get markers with coordinates from lookup
+  const { markersWithCoords, journeysNeedingGeocode } = useMemo(() => {
+    const withCoords: (Journey & { coordinates: [number, number] })[] = [];
+    const needsGeocode: Journey[] = [];
+    
+    journeys.forEach(journey => {
+      // First try local lookup
+      const coords = getCoordinatesFromLookup(journey.location, journey.country);
+      if (coords) {
+        withCoords.push({ ...journey, coordinates: coords });
+      } else {
+        // Check if already geocoded
+        const cacheKey = `${journey.location || ''}-${journey.country || ''}`.toLowerCase().trim();
+        const geocoded = geocodedCoords.get(cacheKey);
+        if (geocoded) {
+          withCoords.push({ ...journey, coordinates: geocoded });
+        } else {
+          needsGeocode.push(journey);
+        }
+      }
+    });
+    
+    return { markersWithCoords: withCoords, journeysNeedingGeocode: needsGeocode };
+  }, [journeys, geocodedCoords]);
+
+  // Geocode journeys that don't have coordinates in our lookup
+  useEffect(() => {
+    if (journeysNeedingGeocode.length === 0) return;
+
+    let isMounted = true;
+    const geocodeJourneys = async () => {
+      const newCoords = new Map<string, [number, number]>();
+      
+      // Process one at a time with rate limiting
+      for (const journey of journeysNeedingGeocode) {
+        if (!isMounted) break;
+        
+        const cacheKey = `${journey.location || ''}-${journey.country || ''}`.toLowerCase().trim();
+        
+        // Check if we already have this in cache
+        const cached = getCachedCoordinates(journey.location, journey.country);
+        if (cached !== undefined) {
+          if (cached) newCoords.set(cacheKey, cached);
+          continue;
+        }
+        
+        // Geocode using OpenStreetMap
+        const coords = await geocodeLocation(journey.location, journey.country);
+        if (coords && isMounted) {
+          newCoords.set(cacheKey, coords);
+          setCachedCoordinates(journey.location, journey.country, coords);
+        }
+        
+        // Rate limit: wait 1 second between requests
+        await new Promise(resolve => setTimeout(resolve, 1100));
+      }
+      
+      if (isMounted && newCoords.size > 0) {
+        setGeocodedCoords(prev => {
+          const updated = new Map(prev);
+          newCoords.forEach((coords, key) => updated.set(key, coords));
+          return updated;
+        });
+      }
+    };
+    
+    geocodeJourneys();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [journeysNeedingGeocode]);
+
+  // Combine all markers
+  const markers = markersWithCoords;
 
   const handleZoomIn = useCallback(() => {
     setPosition(prev => ({ ...prev, zoom: Math.min(prev.zoom * 1.5, 8) }));
