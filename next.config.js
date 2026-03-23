@@ -24,6 +24,10 @@ const nextConfig = {
       },
     ],
   },
+  // Empty turbopack config to silence the warning
+  turbopack: {},
+  // Exclude konva from server-side bundling
+  serverExternalPackages: ['konva', 'react-konva', 'canvas'],
 };
 
 module.exports = nextConfig;

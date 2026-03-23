@@ -1,3 +1,5 @@
+import { CanvasData } from '@/types/canvas';
+
 export type Json =
   | string
   | number
@@ -12,6 +14,7 @@ export type Database = {
       journeys: {
         Row: {
           body: string | null
+          canvas_data: CanvasData | null
           country: string | null
           created_at: string | null
           end_date: string | null
@@ -29,6 +32,7 @@ export type Database = {
         }
         Insert: {
           body?: string | null
+          canvas_data?: CanvasData | null
           country?: string | null
           created_at?: string | null
           end_date?: string | null
@@ -46,6 +50,7 @@ export type Database = {
         }
         Update: {
           body?: string | null
+          canvas_data?: CanvasData | null
           country?: string | null
           created_at?: string | null
           end_date?: string | null

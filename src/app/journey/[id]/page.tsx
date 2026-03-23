@@ -2,10 +2,11 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Heart, Share2, Bookmark, Loader2 } from 'lucide-react';
+import { ArrowLeft, Heart, Share2, Bookmark, Loader2, Palette } from 'lucide-react';
 import { ImageWithFallback } from '@/components/figma/ImageWithFallback';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Journey {
   id: string;
@@ -27,10 +28,14 @@ interface Journey {
 export default function JourneyDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const [journey, setJourney] = useState<Journey | null>(null);
   const [loading, setLoading] = useState(true);
   const [authorName, setAuthorName] = useState('Anonymous Traveler');
   const [authorAvatar, setAuthorAvatar] = useState<string | null>(null);
+
+  // Check if current user is the owner
+  const isOwner = user && journey && user.id === journey.user_id;
 
   useEffect(() => {
     const fetchJourney = async () => {
@@ -394,7 +399,18 @@ export default function JourneyDetailPage() {
         </div>
 
         {/* Action buttons - styled as stickers */}
-        <div className="flex justify-center gap-4 mt-8">
+        <div className="flex justify-center gap-4 mt-8 flex-wrap">
+          {isOwner && (
+            <Link
+              href={`/journey/${journey.id}/edit-canvas`}
+              className="bg-gradient-to-br from-purple-500 to-indigo-500 text-white px-6 py-3 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all transform rotate-1"
+            >
+              <span style={{ fontFamily: 'Permanent Marker, cursive' }} className="flex items-center gap-2">
+                <Palette size={20} />
+                Edit Canvas
+              </span>
+            </Link>
+          )}
           <button className="bg-gradient-to-br from-pink-400 to-red-400 text-white px-6 py-3 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all transform -rotate-2">
             <span style={{ fontFamily: 'Permanent Marker, cursive' }} className="flex items-center gap-2">
               <Heart size={20} />

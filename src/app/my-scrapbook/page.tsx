@@ -7,6 +7,7 @@ import { TravelEntry } from '@/components/TravelEntry';
 import { AddEntryModal, EntryData } from '@/components/AddEntryModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyJourneys, useJourneyMutations } from '@/hooks/useJourneys';
+import { useUserTier } from '@/hooks/useUserTier';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,6 +40,13 @@ export default function MyScrapbookPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingJourney, setEditingJourney] = useState<EditableJourney | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const { tier, premiumUntil, loading: tierLoading } = useUserTier(user?.id);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+
+  const maxFreeJourneys = 3;
+  const usedJourneys = journeys.length;
+  const quotaRemaining = tier === 'free' ? Math.max(0, maxFreeJourneys - usedJourneys) : null;
+  const quotaReached = tier === 'free' && usedJourneys >= maxFreeJourneys;
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '';
@@ -147,6 +155,64 @@ export default function MyScrapbookPage() {
       await handleEditEntry(data);
     } else {
       await handleAddEntry(data);
+    }
+  };
+
+  const ensurePaddleScript = async () => {
+    const existing = document.querySelector('script[data-paddle="true"]') as HTMLScriptElement | null;
+    if (existing) return;
+
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.paddle.com/paddle/v2/paddle.js';
+      script.async = true;
+      script.setAttribute('data-paddle', 'true');
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Failed to load Paddle.js'));
+      document.head.appendChild(script);
+    });
+  };
+
+  const handleUpgradeToPremium = async (period: 'monthly' | 'yearly' = 'yearly') => {
+    if (!user) return;
+    setUpgradeLoading(true);
+    try {
+      const res = await fetch('/api/billing/paddle/create-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ period }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || 'Failed to start checkout');
+      }
+
+      const payload = await res.json();
+      const paddle = payload?.paddle;
+      if (!paddle?.clientSideToken || !paddle?.items || !paddle?.customData || !paddle?.settings) {
+        throw new Error('Invalid Paddle checkout configuration');
+      }
+
+      await ensurePaddleScript();
+
+      const w = window as any;
+      if (!w.Paddle) throw new Error('Paddle.js not available');
+
+      if (!w.__paddleInitialized) {
+        w.Paddle.Initialize({ token: paddle.clientSideToken });
+        w.__paddleInitialized = true;
+      }
+
+      w.Paddle.Checkout.open({
+        items: paddle.items,
+        customData: paddle.customData,
+        settings: paddle.settings,
+      });
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Upgrade failed');
+    } finally {
+      setUpgradeLoading(false);
     }
   };
 
@@ -269,10 +335,59 @@ export default function MyScrapbookPage() {
           </p>
         </div>
 
+        {/* Tier status + upgrade CTA */}
+        <div className="mb-8">
+          {tierLoading ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="w-8 h-8 animate-spin text-[var(--color-primary)]" />
+            </div>
+          ) : (
+            <div className="bg-card p-6 rounded-2xl shadow-lg border border-border/50">
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="text-primary" size={20} />
+                    <h3 className="text-lg font-bold">{tier === 'premium' ? 'Premium Tier' : 'Free Tier'}</h3>
+                  </div>
+
+                  {tier === 'premium' ? (
+                    <p className="text-muted-foreground">
+                      Premium is active{premiumUntil ? ` until ${new Date(premiumUntil).toLocaleDateString('en-US')}` : ''}.
+                    </p>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      Free allows up to {maxFreeJourneys} journal entries. You have {quotaRemaining ?? 0} left.
+                    </p>
+                  )}
+                </div>
+
+                {tier === 'free' && (
+                  <Button
+                    onClick={() => handleUpgradeToPremium('yearly')}
+                    disabled={upgradeLoading}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-6 font-medium shadow-lg hover:shadow-xl transition-all"
+                  >
+                    {upgradeLoading ? 'Opening checkout...' : 'Upgrade to Premium'}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="mb-8 text-center">
           <button
-            onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-full shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+            onClick={() => {
+              if (quotaReached) {
+                toast.info('Free tier limit reached. Upgrade to Premium to keep creating journals.');
+                return;
+              }
+              setIsModalOpen(true);
+            }}
+            aria-disabled={quotaReached}
+            className={`inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-full shadow-lg hover:shadow-xl transition-all transform hover:scale-105 ${
+              quotaReached ? 'opacity-60 cursor-not-allowed' : ''
+            }`}
             style={{ fontFamily: 'Permanent Marker, cursive' }}
           >
             <Plus size={20} />
@@ -316,8 +431,17 @@ export default function MyScrapbookPage() {
                 Start documenting your amazing travel adventures.
               </p>
               <button
-                onClick={() => setIsModalOpen(true)}
-                className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+                onClick={() => {
+                  if (quotaReached) {
+                    toast.info('Free tier limit reached. Upgrade to Premium to keep creating journals.');
+                    return;
+                  }
+                  setIsModalOpen(true);
+                }}
+                aria-disabled={quotaReached}
+                className={`inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 ${
+                  quotaReached ? 'opacity-60 cursor-not-allowed' : ''
+                }`}
                 style={{ fontFamily: 'Permanent Marker, cursive' }}
               >
                 <Plus size={20} />

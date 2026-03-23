@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { CanvasData } from '@/types/canvas';
 
 interface Journey {
   id: string;
@@ -14,7 +15,8 @@ interface Journey {
   body: string | null;
   image_url: string | null;
   image_path: string | null;
-  additional_images: string[] | null; // NEW: 4 additional images
+  additional_images: string[] | null;
+  canvas_data: CanvasData | null; // Canvas editor data
   tags: string[] | null;
   is_public: boolean;
   likes_count: number;
@@ -31,7 +33,8 @@ interface JourneyInsert {
   body?: string | null;
   image_url?: string | null;
   image_path?: string | null;
-  additional_images?: string[] | null; // NEW
+  additional_images?: string[] | null;
+  canvas_data?: CanvasData | null;
   tags?: string[] | null;
   is_public?: boolean;
 }
