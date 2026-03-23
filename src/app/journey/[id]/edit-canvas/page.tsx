@@ -22,7 +22,9 @@ export default function EditCanvasPage() {
   const params = useParams();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  
+
+  // `useParams()` can be null during certain render phases; guard before using it.
+  const journeyId = (params as any)?.id as string | undefined;
   const [journey, setJourney] = useState<Journey | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +32,7 @@ export default function EditCanvasPage() {
 
   useEffect(() => {
     const fetchJourney = async () => {
-      if (!params.id) {
+      if (!journeyId) {
         setError('Journey ID not found');
         setLoading(false);
         return;
@@ -40,7 +42,7 @@ export default function EditCanvasPage() {
       const { data, error: fetchError } = await supabase
         .from('journeys')
         .select('id, user_id, title, location, country, canvas_data')
-        .eq('id', params.id)
+        .eq('id', journeyId)
         .single();
 
       if (fetchError || !data) {
@@ -54,7 +56,7 @@ export default function EditCanvasPage() {
     };
 
     fetchJourney();
-  }, [params.id]);
+  }, [journeyId]);
 
   // Check if user owns this journey
   const isOwner = user && journey && user.id === journey.user_id;

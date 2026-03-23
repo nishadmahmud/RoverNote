@@ -32,7 +32,9 @@ function canvasReducer(state: CanvasEditorState, action: CanvasAction): CanvasEd
 
     case 'UPDATE_ELEMENT': {
       const newElements = state.canvasData.elements.map((el) =>
-        el.id === action.id ? { ...el, ...action.updates } : el
+        // Spreading `Partial<CanvasElement>` into a union can confuse TypeScript;
+        // at runtime this is safe because we keep the element `type`.
+        el.id === action.id ? ({ ...el, ...action.updates } as CanvasElement) : el
       );
       const newCanvasData = { ...state.canvasData, elements: newElements };
       return {

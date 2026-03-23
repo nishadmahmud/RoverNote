@@ -40,12 +40,21 @@ async function requireUser(req: NextRequest) {
   return { user, supabase, status: 200 as const };
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<{}> },
+) {
+  const { params } = context;
+  const resolvedParams = (await params) as any;
+  const id: string = resolvedParams?.id;
+
   const { user, supabase, status } = await requireUser(req);
   if (status !== 200) return NextResponse.json({ error: 'Unauthorized' }, { status });
 
+  if (!id) return NextResponse.json({ error: 'Missing journey id' }, { status: 400 });
+
   // RPC should handle like increment rules.
-  const { error } = await supabase.rpc('increment_likes', { journey_id: params.id });
+  const { error } = await supabase.rpc('increment_likes', { journey_id: id });
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
   return NextResponse.json({ ok: true });

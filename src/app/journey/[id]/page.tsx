@@ -29,6 +29,8 @@ export default function JourneyDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
+
+  const journeyId = (params as any)?.id as string | undefined;
   const [journey, setJourney] = useState<Journey | null>(null);
   const [loading, setLoading] = useState(true);
   const [authorName, setAuthorName] = useState('Anonymous Traveler');
@@ -39,11 +41,16 @@ export default function JourneyDetailPage() {
 
   useEffect(() => {
     const fetchJourney = async () => {
+      if (!journeyId) {
+        setLoading(false);
+        return;
+      }
+
       const supabase = createClient();
       const { data, error } = await supabase
         .from('journeys')
         .select('*')
-        .eq('id', params.id)
+        .eq('id', journeyId)
         .single();
 
       if (error || !data) {
@@ -71,7 +78,7 @@ export default function JourneyDetailPage() {
     };
 
     fetchJourney();
-  }, [params.id]);
+  }, [journeyId]);
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '';

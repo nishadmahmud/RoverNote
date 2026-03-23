@@ -40,14 +40,23 @@ async function requireUser(req: NextRequest) {
   return { user, supabase, status: 200 as const };
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{}> },
+) {
+  const { params } = context;
+  const resolvedParams = (await params) as any;
+  const id: string = resolvedParams?.id;
+
   const { user, supabase, status } = await requireUser(req);
   if (status !== 200) return NextResponse.json({ error: 'Unauthorized' }, { status });
+
+  if (!id) return NextResponse.json({ error: 'Missing journey id' }, { status: 400 });
 
   const { data, error } = await supabase
     .from('journeys')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', user.id)
     .single();
 
@@ -57,10 +66,16 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  context: { params: Promise<{}> },
 ) {
+  const { params } = context;
+  const resolvedParams = (await params) as any;
+  const id: string = resolvedParams?.id;
+
   const { user, supabase, status } = await requireUser(req);
   if (status !== 200) return NextResponse.json({ error: 'Unauthorized' }, { status });
+
+  if (!id) return NextResponse.json({ error: 'Missing journey id' }, { status: 400 });
 
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
@@ -85,7 +100,7 @@ export async function PATCH(
   const { data, error } = await supabase
     .from('journeys')
     .update(updatePayload)
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', user.id)
     .select()
     .single();
@@ -94,14 +109,23 @@ export async function PATCH(
   return NextResponse.json({ journey: data });
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(
+  req: NextRequest,
+  context: { params: Promise<{}> },
+) {
+  const { params } = context;
+  const resolvedParams = (await params) as any;
+  const id: string = resolvedParams?.id;
+
   const { user, supabase, status } = await requireUser(req);
   if (status !== 200) return NextResponse.json({ error: 'Unauthorized' }, { status });
+
+  if (!id) return NextResponse.json({ error: 'Missing journey id' }, { status: 400 });
 
   const { error } = await supabase
     .from('journeys')
     .delete()
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', user.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
