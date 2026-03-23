@@ -200,6 +200,10 @@ export default function MyScrapbookPage() {
       if (!w.Paddle) throw new Error('Paddle.js not available');
 
       if (!w.__paddleInitialized) {
+        const isSandbox = paddle.clientSideToken.startsWith('test_');
+        if (isSandbox) {
+          w.Paddle.Environment.set('sandbox');
+        }
         w.Paddle.Initialize({ token: paddle.clientSideToken });
         w.__paddleInitialized = true;
       }
