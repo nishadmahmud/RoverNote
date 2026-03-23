@@ -199,19 +199,33 @@ export default function MyScrapbookPage() {
       const w = window as any;
       if (!w.Paddle) throw new Error('Paddle.js not available');
 
-      if (!w.__paddleInitialized) {
-        const isSandbox = paddle.clientSideToken.startsWith('test_');
-        if (isSandbox) {
-          w.Paddle.Environment.set('sandbox');
-        }
+      const token: string = paddle.clientSideToken;
+      const mode: 'sandbox' | 'production' = token.startsWith('test_') ? 'sandbox' : 'production';
+      w.Paddle.Environment.set(mode);
+
+      if (!w.__paddleInitialized || w.__paddleToken !== token) {
         w.Paddle.Initialize({ token: paddle.clientSideToken });
         w.__paddleInitialized = true;
+        w.__paddleToken = token;
       }
 
       w.Paddle.Checkout.open({
         items: paddle.items,
         customData: paddle.customData,
         settings: paddle.settings,
+        eventCallback: (event: any) => {
+          if (!event) return;
+          if (event.name === 'checkout.error') {
+            const code = event?.data?.error?.code ?? event?.data?.code ?? 'unknown_error';
+            const detail =
+              event?.data?.error?.detail ??
+              event?.data?.error?.message ??
+              event?.data?.message ??
+              'Paddle checkout failed';
+            console.error('[Paddle checkout.error]', event);
+            toast.error(`Paddle error (${code}): ${detail}`);
+          }
+        },
       });
     } catch (e: any) {
       toast.error(e?.message ?? 'Upgrade failed');
